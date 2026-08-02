@@ -1,0 +1,1586 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>EasyCommunity — Gestion d'association</title>
+<link rel="manifest" href="/manifest.json">
+<meta name="theme-color" content="#1E56B0">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="EasyCommunity">
+<link rel="icon" href="/icons/icon-192.png">
+<link rel="apple-touch-icon" href="/icons/icon-192.png">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+<style>
+  :root{
+    --blue:#1E56B0; --blue-dark:#123E85; --green:#4CAF3E; --green-dark:#2E8B22;
+    --orange:#F2A93B; --red:#E0563E; --ink:#1C2530; --paper:#F6F8FB;
+    --line:#E4E9F0; --muted:#8592A6;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;font-family:'Segoe UI',Inter,system-ui,-apple-system,sans-serif;background:var(--paper);color:var(--ink);}
+  img{max-width:100%;display:block;}
+  button{font-family:inherit;cursor:pointer;}
+  input,select,textarea{font-family:inherit;font-size:14px;}
+  a{color:inherit;}
+
+  /* Layout */
+  #shell{display:flex;min-height:100vh;}
+  #sidebar{position:fixed;top:0;left:0;bottom:0;width:260px;background:#fff;border-right:1px solid var(--line);
+    display:flex;flex-direction:column;z-index:40;transform:translateX(-100%);transition:transform .25s;}
+  #sidebar.open{transform:translateX(0);}
+  @media(min-width:1024px){ #sidebar{transform:translateX(0);} #main{margin-left:260px;} }
+  #sidebar-scrim{position:fixed;inset:0;background:rgba(15,23,42,.4);z-index:35;display:none;}
+  #sidebar-scrim.show{display:block;}
+  #main{flex:1;min-width:0;display:flex;flex-direction:column;}
+
+  .brand{display:flex;align-items:center;gap:10px;padding:18px 20px;border-bottom:1px solid #F0F2F6;}
+  .brand img, .brand .fallback{width:38px;height:38px;border-radius:10px;object-fit:contain;background:#fff;border:1px solid var(--line);}
+  .brand .fallback{display:flex;align-items:center;justify-content:center;font-weight:800;color:#fff;background:linear-gradient(135deg,var(--blue),var(--green));border:none;font-size:14px;}
+  .brand-name{font-weight:800;font-size:14px;line-height:1.2;color:var(--blue);}
+  .brand-name span{color:var(--green);}
+  .brand-slogan{font-size:10px;color:var(--muted);}
+
+  .side-section-title{font-size:10px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;padding:0 10px;margin:16px 0 8px;}
+  .role-list{padding:0 12px;display:flex;flex-direction:column;gap:4px;}
+  .role-btn{display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:10px;border:none;background:transparent;color:#556;font-weight:600;font-size:13.5px;text-align:left;width:100%;}
+  .role-btn.active{color:#fff;}
+  .nav{padding:0 12px;flex:1;overflow-y:auto;}
+  .nav-btn{display:flex;align-items:center;gap:11px;padding:10px 12px;border-radius:10px;border:none;background:transparent;color:#64748B;font-weight:600;font-size:13.5px;width:100%;text-align:left;margin-bottom:2px;}
+  .nav-btn:hover{background:#F8FAFC;color:#1E293B;}
+  .nav-btn.active{background:#F1F5F9;color:#0F172A;}
+  .side-foot{padding:14px 20px;border-top:1px solid #F0F2F6;font-size:10.5px;color:var(--muted);}
+
+  header.topbar{position:sticky;top:0;z-index:20;background:rgba(255,255,255,.92);backdrop-filter:blur(6px);
+    border-bottom:1px solid var(--line);padding:13px 18px;display:flex;align-items:center;justify-content:space-between;gap:12px;}
+
+  #role-bar{display:none;}
+
+  /* Login screen */
+  #login-screen{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px;
+    background:radial-gradient(circle at 30% 20%, #E9F1FF 0%, var(--paper) 55%);}
+  .login-card{width:100%;max-width:380px;background:#fff;border:1px solid var(--line);border-radius:20px;
+    box-shadow:0 20px 50px rgba(15,23,42,.08);padding:30px 26px;}
+  .login-error{background:#FEF2F2;color:#DC2626;font-size:12.5px;font-weight:600;padding:10px 12px;border-radius:9px;margin-bottom:14px;display:none;}
+  .login-hint{margin-top:18px;font-size:11.5px;color:#94A3B8;text-align:center;line-height:1.6;}
+
+  #license-screen{min-height:100vh;display:none;align-items:center;justify-content:center;padding:24px;
+    background:radial-gradient(circle at 30% 20%, #FFF6E9 0%, var(--paper) 55%);}
+  .license-card{width:100%;max-width:400px;background:#fff;border:1px solid var(--line);border-radius:20px;
+    box-shadow:0 20px 50px rgba(15,23,42,.08);padding:30px 26px;text-align:center;}
+  .license-icon{width:56px;height:56px;border-radius:16px;background:#FFF6E9;color:var(--orange);
+    display:flex;align-items:center;justify-content:center;font-size:24px;margin:0 auto 14px;}
+
+  .session-box{padding:14px 16px;margin:4px 12px 14px;border-radius:12px;background:#F8FAFC;}
+  .session-box .who{font-weight:800;font-size:13px;color:#1E293B;}
+  .session-box .role{font-size:11.5px;color:#64748B;margin-top:1px;}
+  .logout-link{display:inline-flex;align-items:center;gap:6px;margin-top:9px;font-size:12px;font-weight:700;color:#DC2626;background:none;border:none;padding:0;}
+  .menu-btn{display:inline-flex;background:none;border:none;font-size:19px;color:#64748B;padding:6px;}
+  @media(min-width:1024px){.menu-btn{display:none;}}
+  .topbar-role{font-size:12.5px;color:var(--muted);font-weight:600;}
+  .topbar-title{font-size:18px;font-weight:800;color:#1E293B;}
+  .avatar{width:36px;height:36px;border-radius:999px;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:14px;}
+  #sync-btn.spinning i{animation:spin .7s linear infinite;}
+  @keyframes spin{from{transform:rotate(0deg);}to{transform:rotate(360deg);}}
+
+  main{flex:1;padding:20px 18px 60px;max-width:1180px;width:100%;margin:0 auto;}
+
+  /* Cards & grid */
+  .card{background:#fff;border:1px solid var(--line);border-radius:16px;box-shadow:0 1px 2px rgba(15,23,42,.03);}
+  .pad{padding:20px;}
+  .stat-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:14px;}
+  @media(min-width:768px){.stat-grid{grid-template-columns:repeat(4,1fr);}}
+  .stat-card{display:flex;gap:14px;align-items:flex-start;padding:18px;}
+  .stat-icon{width:44px;height:44px;border-radius:12px;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:18px;}
+  .stat-label{font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.03em;}
+  .stat-value{font-size:21px;font-weight:800;color:#1E293B;margin-top:2px;}
+  .stat-sub{font-size:11px;color:#A6B0C0;margin-top:2px;}
+
+  h3.section-title{font-weight:800;color:#1E293B;margin:0 0 14px;font-size:15.5px;}
+
+  /* Buttons */
+  .btn{display:inline-flex;align-items:center;gap:8px;padding:10px 16px;border-radius:11px;font-size:13.5px;font-weight:700;border:none;transition:.15s;}
+  .btn:active{transform:scale(.98);}
+  .btn-primary{color:#fff;background:linear-gradient(135deg,var(--blue),var(--green));}
+  .btn-secondary{background:#F1F5F9;color:#334155;}
+  .btn-outline{background:#fff;border:1px solid #CBD5E1;color:#334155;}
+  .btn-danger{background:#FEF2F2;color:#DC2626;}
+  .btn-ghost{background:transparent;color:#64748B;}
+  .btn-sm{padding:7px 12px;font-size:12.5px;}
+  .icon-btn{border:none;background:transparent;color:#94A3B8;padding:7px;border-radius:9px;font-size:14px;}
+  .icon-btn:hover{background:#F1F5F9;color:#334155;}
+  .icon-btn.danger:hover{background:#FEF2F2;color:#DC2626;}
+
+  /* Forms */
+  label.field{display:block;margin-bottom:0;}
+  .field-label{display:block;font-size:11.5px;font-weight:700;color:#64748B;margin-bottom:5px;}
+  .field-label .req{color:#E11D48;}
+  .input,select.input,textarea.input{width:100%;padding:10px 12px;border-radius:9px;border:1px solid #CBD5E1;color:#1E293B;background:#fff;}
+  .input:focus,select.input:focus,textarea.input:focus{outline:2px solid #1E56B055;border-color:transparent;}
+  .input[disabled]{background:#F8FAFC;color:#94A3B8;}
+  .grid2{display:grid;grid-template-columns:1fr;gap:14px;}
+  @media(min-width:640px){.grid2{grid-template-columns:1fr 1fr;}}
+  .span2{grid-column:1/-1;}
+
+  /* Badges */
+  .badge{display:inline-flex;padding:4px 11px;border-radius:999px;font-size:11.5px;font-weight:700;}
+  .badge-slate{background:#F1F5F9;color:#475569;}
+  .badge-green{background:#ECFDF5;color:#059669;}
+  .badge-orange{background:#FFFBEB;color:#D97706;}
+  .badge-red{background:#FEF2F2;color:#E11D48;}
+  .badge-blue{background:#EFF6FF;color:#2563EB;}
+
+  /* Table */
+  table{width:100%;border-collapse:collapse;font-size:13.5px;}
+  thead tr{background:#F8FAFC;color:#64748B;font-size:11px;text-transform:uppercase;letter-spacing:.03em;}
+  th{text-align:left;padding:12px 14px;font-weight:700;}
+  td{padding:12px 14px;border-top:1px solid #F1F5F9;}
+  tbody tr:hover{background:#F8FAFC;}
+  .table-wrap{overflow-x:auto;}
+  .hide-sm{display:none;} @media(min-width:640px){.hide-sm{display:table-cell;}}
+  .hide-md{display:none;} @media(min-width:768px){.hide-md{display:table-cell;}}
+  .hide-lg{display:none;} @media(min-width:1024px){.hide-lg{display:table-cell;}}
+
+  /* Empty state */
+  .empty{padding:60px 20px;text-align:center;color:#A6B0C0;}
+  .empty i{font-size:30px;opacity:.5;margin-bottom:10px;display:block;}
+  .empty .t{font-weight:700;color:#94A3B8;}
+  .empty .s{font-size:13px;margin-top:4px;max-width:280px;margin-inline:auto;}
+
+  /* Modal */
+  .modal-overlay{position:fixed;inset:0;z-index:100;display:none;align-items:flex-start;justify-content:center;padding:20px;overflow-y:auto;}
+  .modal-overlay.open{display:flex;}
+  .modal-backdrop{position:fixed;inset:0;background:rgba(15,23,42,.5);backdrop-filter:blur(2px);}
+  .modal{position:relative;background:#fff;border-radius:18px;box-shadow:0 20px 50px rgba(0,0,0,.2);width:100%;max-width:540px;margin:24px auto;}
+  .modal.wide{max-width:660px;}
+  .modal-header{display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid #F1F5F9;}
+  .modal-header h3{margin:0;font-size:15.5px;font-weight:800;}
+  .modal-body{padding:20px;}
+  .modal-foot{display:flex;justify-content:flex-end;gap:8px;padding:0 20px 20px;}
+
+  .thumb-row{display:flex;align-items:center;gap:12px;}
+  .thumb{width:64px;height:64px;border-radius:999px;object-fit:cover;border:1px solid var(--line);}
+  .thumb-empty{width:64px;height:64px;border-radius:999px;background:#F1F5F9;display:flex;align-items:center;justify-content:center;color:#A6B0C0;font-size:20px;}
+  .file-btn{display:inline-flex;align-items:center;gap:7px;padding:9px 13px;border-radius:9px;border:1px solid #CBD5E1;background:#fff;font-size:12px;font-weight:700;color:#475569;}
+
+  /* Print pages */
+  .print-screen{min-height:100vh;background:#F1F5F9;display:flex;flex-direction:column;align-items:center;padding:40px 16px;}
+  @media print{ .no-print{display:none !important;} body{background:#fff;} }
+
+  ::-webkit-scrollbar{width:8px;height:8px;} ::-webkit-scrollbar-thumb{background:#D8DEE8;border-radius:8px;}
+</style>
+</head>
+<body>
+
+<div id="login-screen" style="display:none;">
+  <div class="login-card">
+    <div style="display:flex;flex-direction:column;align-items:center;text-align:center;margin-bottom:22px;">
+      <img id="login-logo" style="width:56px;height:56px;border-radius:16px;object-fit:contain;margin-bottom:12px;">
+      <div style="font-weight:800;font-size:17px;" id="login-assoc-name">EasyCommunity</div>
+      <div style="font-size:12px;color:#94A3B8;">Connexion à votre espace</div>
+    </div>
+    <div class="login-error" id="login-error">Identifiants incorrects ou compte désactivé.</div>
+    <label class="field" style="margin-bottom:14px;"><span class="field-label">Identifiant</span><input class="input" id="login-email" type="text" placeholder="admin"></label>
+    <label class="field" style="margin-bottom:18px;"><span class="field-label">Mot de passe</span><input class="input" id="login-password" type="password" placeholder="••••••••" onkeydown="if(event.key==='Enter')Auth.attempt()"></label>
+    <button class="btn btn-primary" style="width:100%;justify-content:center;" onclick="Auth.attempt()">Se connecter</button>
+    <button id="install-btn" class="btn btn-outline" style="width:100%;justify-content:center;margin-top:10px;display:none;" onclick="PwaInstall.trigger()"><i class="fa-solid fa-mobile-screen-button"></i> Installer l'application</button>
+    <div class="login-hint">Compte administrateur par défaut :<br><b>admin</b> / <b>admin123</b><br>À modifier dans Utilisateurs après la première connexion.</div>
+  </div>
+</div>
+
+<div id="license-screen">
+  <div class="license-card" id="license-card-content"></div>
+</div>
+
+<div id="sidebar-scrim" onclick="UI.closeMobileNav()"></div>
+<div id="shell">
+  <aside id="sidebar"></aside>
+  <div id="main">
+    <header class="topbar">
+      <div style="display:flex;align-items:center;gap:10px;min-width:0;">
+        <button class="menu-btn" onclick="UI.openMobileNav()"><i class="fa-solid fa-bars"></i></button>
+        <div style="min-width:0;">
+          <div class="topbar-role" id="topbar-role"></div>
+          <h1 class="topbar-title" id="topbar-title"></h1>
+        </div>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px;">
+        <button class="icon-btn" id="sync-btn" title="Actualiser" onclick="manualRefresh()"><i class="fa-solid fa-rotate"></i></button>
+        <div class="avatar" id="topbar-avatar"></div>
+        <button class="icon-btn" title="Se déconnecter" onclick="Auth.logout()"><i class="fa-solid fa-right-from-bracket"></i></button>
+      </div>
+    </header>
+    <div id="role-bar" style="display:none;"></div>
+    <main id="page"></main>
+  </div>
+</div>
+
+<div id="print-root" style="display:none;"></div>
+
+<!-- ================= MODALS ================= -->
+
+<!-- Member modal -->
+<div class="modal-overlay" id="modal-member">
+  <div class="modal-backdrop" onclick="UI.closeModal('modal-member')"></div>
+  <div class="modal wide">
+    <div class="modal-header"><h3 id="member-modal-title">Ajouter un membre</h3><button class="icon-btn" onclick="UI.closeModal('modal-member')"><i class="fa-solid fa-xmark"></i></button></div>
+    <div class="modal-body">
+      <input type="hidden" id="mf-id">
+      <div class="thumb-row" style="margin-bottom:16px;">
+        <img id="mf-photo-preview" class="thumb" style="display:none;">
+        <div id="mf-photo-empty" class="thumb-empty"><i class="fa-solid fa-user"></i></div>
+        <label class="file-btn"><i class="fa-solid fa-upload"></i> Photo<input type="file" accept="image/*" style="display:none" onchange="Members.handlePhoto(event)"></label>
+      </div>
+      <div class="grid2">
+        <label class="field"><span class="field-label">Prénom<span class="req"> *</span></span><input class="input" id="mf-firstname"></label>
+        <label class="field"><span class="field-label">Nom<span class="req"> *</span></span><input class="input" id="mf-lastname"></label>
+        <label class="field"><span class="field-label">N° d'adhésion</span><input class="input" id="mf-membernumber" disabled></label>
+        <label class="field"><span class="field-label">Catégorie</span>
+          <select class="input" id="mf-category">
+            <option>Membre actif</option><option>Membre honoraire</option><option>Membre bienfaiteur</option><option>Membre fondateur</option><option>Sympathisant</option>
+          </select>
+        </label>
+        <label class="field"><span class="field-label">Profession</span><input class="input" id="mf-profession"></label>
+        <label class="field"><span class="field-label">Téléphone</span><input class="input" id="mf-phone"></label>
+        <label class="field"><span class="field-label">E-mail</span><input class="input" type="email" id="mf-email"></label>
+        <label class="field"><span class="field-label">Date d'adhésion</span><input class="input" type="date" id="mf-joindate" onchange="Members.onJoinDateChange()"></label>
+        <label class="field span2"><span class="field-label">Adresse</span><input class="input" id="mf-address"></label>
+        <label class="field"><span class="field-label">Statut</span>
+          <select class="input" id="mf-status"><option value="actif">Actif</option><option value="inactif">Inactif</option></select>
+        </label>
+      </div>
+    </div>
+    <div class="modal-foot"><button class="btn btn-secondary" onclick="UI.closeModal('modal-member')">Annuler</button><button class="btn btn-primary" onclick="Members.save()">Enregistrer</button></div>
+  </div>
+</div>
+
+<!-- Member profile modal -->
+<div class="modal-overlay" id="modal-profile">
+  <div class="modal-backdrop" onclick="UI.closeModal('modal-profile')"></div>
+  <div class="modal">
+    <div class="modal-header"><h3>Profil du membre</h3><button class="icon-btn" onclick="UI.closeModal('modal-profile')"><i class="fa-solid fa-xmark"></i></button></div>
+    <div class="modal-body" id="profile-body"></div>
+  </div>
+</div>
+
+<!-- Due modal -->
+<div class="modal-overlay" id="modal-due">
+  <div class="modal-backdrop" onclick="UI.closeModal('modal-due')"></div>
+  <div class="modal">
+    <div class="modal-header"><h3>Enregistrer un paiement</h3><button class="icon-btn" onclick="UI.closeModal('modal-due')"><i class="fa-solid fa-xmark"></i></button></div>
+    <div class="modal-body">
+      <label class="field" style="margin-bottom:14px;"><span class="field-label">Membre<span class="req"> *</span></span><select class="input" id="df-member"></select></label>
+      <div class="grid2" style="margin-bottom:14px;">
+        <label class="field"><span class="field-label">Montant<span class="req"> *</span></span><input class="input" type="number" id="df-amount"></label>
+        <label class="field"><span class="field-label">Date</span><input class="input" type="date" id="df-date"></label>
+      </div>
+      <div class="grid2">
+        <label class="field"><span class="field-label">Période</span><input class="input" id="df-period"></label>
+        <label class="field"><span class="field-label">Mode de paiement</span>
+          <select class="input" id="df-mode"><option>Espèces</option><option>Mobile Money</option><option>Virement</option><option>Chèque</option></select>
+        </label>
+      </div>
+    </div>
+    <div class="modal-foot"><button class="btn btn-secondary" onclick="UI.closeModal('modal-due')">Annuler</button><button class="btn btn-primary" onclick="Dues.save()">Enregistrer</button></div>
+  </div>
+</div>
+
+<!-- Transaction modal -->
+<div class="modal-overlay" id="modal-tx">
+  <div class="modal-backdrop" onclick="UI.closeModal('modal-tx')"></div>
+  <div class="modal">
+    <div class="modal-header"><h3 id="tx-modal-title">Enregistrer une opération</h3><button class="icon-btn" onclick="UI.closeModal('modal-tx')"><i class="fa-solid fa-xmark"></i></button></div>
+    <div class="modal-body">
+      <input type="hidden" id="tf-type">
+      <label class="field" style="margin-bottom:14px;"><span class="field-label">Catégorie<span class="req"> *</span></span><input class="input" id="tf-category" placeholder="Ex: Location de salle, Don, Matériel..."></label>
+      <div class="grid2" style="margin-bottom:14px;">
+        <label class="field"><span class="field-label">Montant<span class="req"> *</span></span><input class="input" type="number" id="tf-amount"></label>
+        <label class="field"><span class="field-label">Date</span><input class="input" type="date" id="tf-date"></label>
+      </div>
+      <label class="field"><span class="field-label">Description</span><textarea class="input" id="tf-description" rows="2"></textarea></label>
+    </div>
+    <div class="modal-foot"><button class="btn btn-secondary" onclick="UI.closeModal('modal-tx')">Annuler</button><button class="btn btn-primary" onclick="Accounting.save()">Enregistrer</button></div>
+  </div>
+</div>
+
+<!-- User modal -->
+<div class="modal-overlay" id="modal-user">
+  <div class="modal-backdrop" onclick="UI.closeModal('modal-user')"></div>
+  <div class="modal">
+    <div class="modal-header"><h3>Utilisateur</h3><button class="icon-btn" onclick="UI.closeModal('modal-user')"><i class="fa-solid fa-xmark"></i></button></div>
+    <div class="modal-body">
+      <input type="hidden" id="uf-id">
+      <label class="field" style="margin-bottom:14px;"><span class="field-label">Nom complet<span class="req"> *</span></span><input class="input" id="uf-name"></label>
+      <label class="field" style="margin-bottom:14px;"><span class="field-label">Identifiant<span class="req"> *</span></span><input class="input" type="text" id="uf-email" placeholder="ex. secretaire"></label>
+      <label class="field" style="margin-bottom:14px;"><span class="field-label" id="uf-password-label">Mot de passe<span class="req"> *</span></span><input class="input" type="password" id="uf-password" placeholder="Laisser vide pour ne pas changer"></label>
+      <label class="field"><span class="field-label">Rôle</span>
+        <select class="input" id="uf-role"><option value="administrateur">Administrateur</option><option value="secretaire">Secrétaire</option><option value="tresorier">Trésorier</option></select>
+      </label>
+    </div>
+    <div class="modal-foot"><button class="btn btn-secondary" onclick="UI.closeModal('modal-user')">Annuler</button><button class="btn btn-primary" onclick="Users.save()">Enregistrer</button></div>
+  </div>
+</div>
+
+<!-- Report modal -->
+<div class="modal-overlay" id="modal-report">
+  <div class="modal-backdrop" onclick="UI.closeModal('modal-report')"></div>
+  <div class="modal">
+    <div class="modal-header"><h3>Envoyer un rapport</h3><button class="icon-btn" onclick="UI.closeModal('modal-report')"><i class="fa-solid fa-xmark"></i></button></div>
+    <div class="modal-body">
+      <label class="field" style="margin-bottom:14px;"><span class="field-label">Titre<span class="req"> *</span></span><input class="input" id="rf-title"></label>
+      <label class="field"><span class="field-label">Contenu<span class="req"> *</span></span><textarea class="input" id="rf-content" rows="5"></textarea></label>
+    </div>
+    <div class="modal-foot"><button class="btn btn-secondary" onclick="UI.closeModal('modal-report')">Annuler</button><button class="btn btn-primary" onclick="Reports.send()">Envoyer</button></div>
+  </div>
+</div>
+
+<!-- Meeting modal -->
+<div class="modal-overlay" id="modal-meeting">
+  <div class="modal-backdrop" onclick="UI.closeModal('modal-meeting')"></div>
+  <div class="modal wide">
+    <div class="modal-header"><h3>Nouveau compte rendu</h3><button class="icon-btn" onclick="UI.closeModal('modal-meeting')"><i class="fa-solid fa-xmark"></i></button></div>
+    <div class="modal-body">
+      <label class="field" style="margin-bottom:14px;"><span class="field-label">Titre de la réunion<span class="req"> *</span></span><input class="input" id="mtf-title"></label>
+      <label class="field" style="margin-bottom:14px;"><span class="field-label">Participants</span><input class="input" id="mtf-participants" placeholder="Séparés par des virgules"></label>
+      <label class="field"><span class="field-label">Procès-verbal<span class="req"> *</span></span><textarea class="input" id="mtf-content" rows="6"></textarea></label>
+    </div>
+    <div class="modal-foot"><button class="btn btn-secondary" onclick="UI.closeModal('modal-meeting')">Annuler</button><button class="btn btn-primary" onclick="Meetings.send()">Envoyer à l'administrateur</button></div>
+  </div>
+</div>
+
+<script>
+/* ============================================================
+   EasyCommunity — Application de gestion d'association
+   Vanilla HTML / CSS / JS — déployable sur Cloudflare / GitHub
+   ============================================================ */
+
+/* ---------- Default (bundled) logo — used until the admin uploads their own ---------- */
+const DEFAULT_LOGO = "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAUDBAQEAwUEBAQFBQUGBwwIBwcHBw8LCwkMEQ8SEhEPERETFhwXExQaFRERGCEYGh0dHx8fExciJCIeJBweHx7/2wBDAQUFBQcGBw4ICA4eFBEUHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh7/wAARCACgAKADASIAAhEBAxEB/8QAHwAAAQUBAQEBAQEAAAAAAAAAAAECAwQFBgcICQoL/8QAtRAAAgEDAwIEAwUFBAQAAAF9AQIDAAQRBRIhMUEGE1FhByJxFDKBkaEII0KxwRVS0fAkM2JyggkKFhcYGRolJicoKSo0NTY3ODk6Q0RFRkdISUpTVFVWV1hZWmNkZWZnaGlqc3R1dnd4eXqDhIWGh4iJipKTlJWWl5iZmqKjpKWmp6ipqrKztLW2t7i5usLDxMXGx8jJytLT1NXW19jZ2uHi4+Tl5ufo6erx8vP09fb3+Pn6/8QAHwEAAwEBAQEBAQEBAQAAAAAAAAECAwQFBgcICQoL/8QAtREAAgECBAQDBAcFBAQAAQJ3AAECAxEEBSExBhJBUQdhcRMiMoEIFEKRobHBCSMzUvAVYnLRChYkNOEl8RcYGRomJygpKjU2Nzg5OkNERUZHSElKU1RVVldYWVpjZGVmZ2hpanN0dXZ3eHl6goOEhYaHiImKkpOUlZaXmJmaoqOkpaanqKmqsrO0tba3uLm6wsPExcbHyMnK0tPU1dbX2Nna4uPk5ebn6Onq8vP09fb3+Pn6/9oADAMBAAIRAxEAPwD7KooooAKKKKACkpaKACiikoAWiivLvH/xesNA1aXSNLtFv7qBts8jvtjjbuoxyxHfoBXXg8DXxtT2dCN2cWOzDD4Cl7WvKyPUaK8u8CfF6y1vU4tM1a0SxnnYJDKj5jZj0U55XPQHkfSvUaMZga+Cn7OvGzFgMyw2YU/aYeV1+K9UFFFFch3BRRRQAUUUUAFFJS0AFJS0lAC0UlLQAUUUUAFFFZPiTxFo3h20+06vfRW6n7iHl3/3VHJq6dOdSShBXb6Izq1YUoOdRpJdXojVOccde1fCmrXF1bazfQXu4XUdzIs27rvDHdn8c19A+J/je6xTJ4d0qIuFPlyXrHDHtlVPH515dqWu+BfH0v27xYl94a8Q4C3F7p8Hm29zjjc0R+ZWxgcenU1+i8LYLFZb7SeIpPllbbVq1+i1tr018j4bOsbgc4UYUKqvC+90nfzfp6HIWF3PNdww2od53dViVepYnAA984r7nthILeMTEGQIA5Hc45/WvlDQ9Q+H3giYal4ea/8AEutp/wAe1zfQiG2tm/viP7zN9fzFdvoHx9ulZV1zRIJV/iks5CjD/gLZB/MU+JsFis05JYak+WN99G722T1tp1s/IzyLF4HKZTjVqayttqla/VddT3yiuc8HeNvDfiuLOj6gjzgZe2kGyZPqp6j3GRXR1+d1qNShNwqRaa6M+8o1qdaCnTkmn1QUUUVkahRRRQAUUUUAFFJRQAtFFFABSUtVNW1Gz0uxkvb+4jt4Ixy7tgfT6+1KUlFXbshxi5Plirs4v4wfEey8D6ctvCI7jWLlCYIGPyovTzH9s9B3P4mvnF5PF3jLUpNQjstU1i5lPzSxwM4HtkDaAPToK9I1HVvB0XiK41aLR5vFetXUu77XqQxEp6KkUPPygYABGeOten+G9O8Y6lbx3Gu6kNHtiMpYWESo4HYMxyV+g59xXr5bxlluBXscupOtU+1PaK8k30+d32PPzTgrH4xKtmNRUqf2Y9X8lfX1Vl3Pn2H4ZfEe5AZPDVwgP/PSaJP0LVQ1X4VfEKEmZ/Ct2x7mF45CfwVia+sb7UdD8O2obU9WtrJCPv3t2AW/Fzk1kj4j+AicDxdox+l0tfR0OLs0n70KCa8lJ/jc+dlwrllF29q0/NpfhY+N9TsNV0abydV068sJM/duYWjJ/MVHbyTTnFvFLMfSNC38q+ybzxv8PNQt2trzxFoV1A/3o5ZkdT9QeKls/GXgS2hENnr+iwxjokUqKB+Ar1FxdiOT3sI+b1dv/SThnw5g+b/eVb5f5nxvHe32mXcVwjXNlcRNujk+aN1I7g8EV9G/Av4ur4llj8OeIpETVgv+jXHAW6A6gjs+OeOD9a7688U+Br+AwXmsaNdRMMFJnR1P4GvOPG3wZ0HXbRPEnw7vItK1GNvOg8h/9GldW42/882BHBHGRyO9cmKzbBZrT9jjqLpP7M90n56J277/AKnVgcvngKvPgqyqLrG61X3v7z26iuf+H+tXWveFbS91G1e01JA0F9buMNFOh2uMehIyPZhXQV8DWpSo1JU5bp2Ps4TU4qS6hRRRWZQUUUUAFFFFABRVXU9QsdMtjc391FbxA43OcZPoPU/SqGleKNB1S4FvZalFJMeiMChb6ZAz+Fc08Zh6dRUpzSk9k2r/AHG0cPWnB1Iwbiutnb7w8XeIbPw5pTXl187t8sMIPzSN6ew9T2r578YeINU8Q3zXWozlgpPlxLxHEPRR/XrW58R9ZuNW8SXZmWSOO3cwRROMFFU+nqTz+VZ/gHQ/+Ei8W2tlIu62Qma5/wCua9vxOB+NfmecZtiM3xv1SjpC9ku77v8ArRH6XkWW0MqwrxdZe9a7fZdl/Wp3/wAFvBMdnZx+JNTh3Xc43WkbD/Uof4/95v0H1qL9of4qj4faPDYaV5cmv36kwBxuW3jHBlYd+eFHQnPYEV6qAFUKoAA4AHQV+f3xw8TSeKPixr+omQvBHdNa23PAiiOxcfUgt9WNftnBPD2H9oqLV4QV35vz9fyVj8q4mzqviXKvJ+9LReS8vT/gmVqGr6hrGoyajq17cXt3KcvNO5dj+J6D2HFWLWX3qHwPoOoeK/E9h4f0tQbq8l2KzfdQYyzt7KASfpX1v4d/Z68B6fYRx6il9qt1geZNJctECe+1UIwPYkn3r9RzLO8HlajCpu9kl0/BWPz+llNfH3lD72fMdnL05rZs5enNfTSfBH4cJ93RZx/2+zf/ABVTp8G/h+n3dIm/8DJf/iq8SXGOAf2Zfcv8zCtwbjZ7Sj97/wAj560mO4vLuG1tYnmnmcJHGoyWY9AK+svCmmf2N4b0/SyQzW8Co5HQt1Y/mTVLwx4L8M+G5TNpGlRQzkY85maR8egZiSPwroK+Uz7O45i4wpRaitdd2z3+GuG3lLnVqyTnLTTZL/gmP4rS4h0a4v8ATgEu7X/SUwP9YVHzK3qCoI/L0FT+G9Xttc0eDUbU4WQfMhPKN3U/StB1V1KMAVYYIPcV4/8ACrVTo/jC78PzPi3uJnjQMekqEgfmAR+VfA43GvBY6lzP3Kvuvya2fzvZ/Lse1iMR9WxNO/wz0+fR/O9j2KiiivcPSCiiigApKWigDwT4saxcXXjS7tpHYRWZEUSE8D5QSfxJ/lXKreujKyOVdSCpBwQexFer/Ff4fXmt3/8AbWiFGumQLPbu23zMcBlJ4zjgg+grgrH4d+IFLXOv+Voumw/NcXM8qkqv+yqk5PpX5Jm+R42ePqTcW7ttPpb12Vl32P1nKMxy54CmudJpJOPW/kt3d9ty18Qphe2uha1IALnULANcHoWdDt3Y9x/Kuy+AWliPSr/WHX57iUQxn/YTk/mx/SvM/GesQ6xqkf8AZ8Tw6ZYwLbWav18te59yefyr3n4bWP8AZ/gbSbcqAxtxK3+8/wAx/nXr5BQhiM4nWTuorfu7JN/PVnmcQTlhMnhRejm9uyu2l8tEW/GerpoHhHWNbkYBbCxmuef9hCw/UCvzRhuXlcySMS7ncxPcnk/rX3J+2Jrf9jfAnV41bbJqUsNinP8AfcM3/jiNXwXbze9f0JwfD2dGdTu7fd/w5+O5uudqPY9//ZR1Lw9oHirVvFfibVLTTbHTrDykluH2gySuAAo6s21G4AJr3xf2ifhS0hSPXrmTBwCunzYP0+WvgG9m33ca5wEXv6mtbS2TI+ZfzFenjcjoZlipVa0n0Stbp8n1OKnjKmEoKMEu596Q/Hf4bTfc1e6P/bjL/wDE1et/jF4Dnx5ep3Bz/wBOcg/pXxVpTKcfMv517J8GfA1/4s1OKWSGWLSImzcXOMBgP4EPdj7dOvpXFiuF8swtJ1ak5JLzX+R5UuIszqVVRoQi5Pyf+Z9QeH9Ystd01NR05pXtnJCO8TJux1IB6j3rRqK0t4bS1itraJYoYkCRoowFUcACpa/PKjg5PkWnS591RU1BKo7y622v5BXziIr7VPinNbaXMlvImoy3ElywysEcchZmP4D9a+ibyeO1tJrmU4jhRpGPoAMn+VfPHw0kkvtc12JT/pmp6Xcxwc4zI3zY/HBr5DiRQqV8NSl3b+62nz2PJzaEalSlF92zrfEHxXuXvXj0WGBLZWIWWVdzSD1xnAFdB8PfiEmvX40rUIUhu2UmKROEkwMkYPQ4596+cpL1opGjkyrKcMp4IPcGuq+E4utS+IOkRWqs3kzieQjosa8sT/L8RXzOAznM5Y6MpTbUmk49LN9F0OGhmlWVVK97vY+oqKSlr9SPqAooooAKw/Hdmb7whqdsqhmMBcDGclfmH8q3KRgGUqRkHgj1rHEUVXoypPaSa+9WNaFV0asai3TT+4+WbiLzpliXrIwQficV9R28SwW8cKDCxqEH0AxXzz4n0ttC8ZGzYERxXSPGx7xlgVP5cfga+gEvrdtUl00OPtEcKTlfVGZgCPxUiviuCcPKi8RCa96LSfyufZcX11Wp4eUH7rTf38p8qf8ABQ7X/LtfCXhuNzmSWe+mX2UCNP8A0J/yr5QtpeOTxXvX/BQ9LlPivoMz5+ztoirGe24Tybv5r+lfO9pNnFfv2QyUMJBL+tT80xlPmlc+/P2b/gx4N0nwHpPiPVtFtNW1vVbWO7kmvYllEKuoZY41bIUBSMnGSc89APXB4U8Lr08N6MPpYxf/ABNfIvwh/aivvC3hCx8Oa74cGrrYRLBbXMN15T+WvCq4KkEgYGRjgDI713cP7W2myY/4oi9H/cQT/wCIrwsVlWa1q8pJN3fdf5mkcVhoQSk7fI+g18NeHVOV0DSl+lnH/hWpGiRRrHGioijCqowAPpXztB+1Np0v/Mm3g/7fk/8Aia0bL9pTS5plWbwrexxk/My3SMQPYEDP51zy4fzWS96m381/mYvN8BTfxpfJ/wCR71RWZ4Y1zTfEeh22s6TP51pcrlCRggg4KkdiCCCK0q8OcJQk4yVmj1ISjOKlF3TOG+OGuLo3gS5hV8XGoMLWMA84PLn/AL5B/MV8+6TezWt3FdW8rRTROHR1OCpHQitb42eMl8TeMnis5Q+nafmC3YHiRs/O/wCJGB7KPWrnwV8LS+JvEKXE8ROmWTCS4Yjh26rGPr1Pt9RX5nnMqmaZiqdDpov1f9dD5TE4h4zGctPpov8AM9Ul+Gug+KtMstV8RWP2fWJ4UkvJLFzCJHIBO5eRn1PWuo8IeENA8KWzw6LYLA0uPNlZi8kmOmWPOPbpW7S19/RwVClJTUVzd7a/0z6SnhKNOXOorm79QpKWius6QooooAKKKKAOJ+K/hZ9d0gXlkm7ULRSVUdZU6lfr3H4jvXH/ABN8VTeFYfBfxOjiklsFH9na1HGMn7POFO7HqkkfH1I717NWB4w8K6X4l8Iap4Zu4glpqMbq+0fcduQ4HqGw31FZZfhqWFzB4q3uzVprv0v62b/A9FY5zw8KFTVRbt6PdfqjzP8AaR+Ftl8a/h/Yah4ev7VtVs1NzpVzu/c3Ebgboyw6BsKQexAzwTXwp4j+Hvjvwnfvaa94U1eyZDgu1qzRt/uuoKsPcE17z4E+IvjL4D+K73wZr9q2oaXBOfMtGYjaCciaBj0DD5sHg+xya+ofAnxc8AeMoUOleILeG6Yc2d4wgnU+m1jhv+AkivsnDGZUrwXtKT1TXb9DjxOAktVqu5+blpZalxnTr3/wHf8AwrXs7PUOP+Jfef8AgO/+FfqODkAgkg+lL+dXT4tnD/l1+P8AwDx6uWRqdT807G0vxj/Qbv8A78P/AIVvWNtfDH+hXX/flv8ACv0O/OmyMVQsEdyBnavU+3NdK42kv+XP/k3/AADzK3DcKn/Lz8P+Cecfs3WVxZfCmxa5V0a5nmmVGGCql9o4/wCA5/GsD4+fEqKxtbjwnoNyGv5QUvZ424gQ9Ywf757/AN0e546nx3P4nvLR4G1zR/B2mtkS3U9wHuWTvt5VU/BifcV5Npdz8LtE1e20zwxYXfxB8STy7bcScWwk65JI24HUnDYGTmvgsyhmOc1qjwtNpSbbk9El/XV2PSp5fja1COFwkXypWcnp6+nz/wCCYvwy+GmteL7lLiVH0/SVIMlzImDIvpED94+/Qe/SvqHw7ouneH9Ig0rS7cQW0IwB1LHuzHuT3NS6PFeRadCuoyW8l5sHnNAhSMH0UHnaOgzzxVyuHL8qo4BPl1l1f+XkaYHLaWCXu6vv/l5BRRRXpHoBRRRQAlLRRQAUUUUAFFFFAHmnx1+EukfE3RVyyWWuWiEWV9tzx18uTHJQn8VPI7g/EHjLwh4g8Ga2+j+I9Nls7lSSm4ZjlX+8jdGX3H44NfpVWV4n8O6H4m0x9M1/S7XUbRufLnTdg+qnqp9wQa+hyjP6uA/dzXNDt1Xp/kd+Ex0qGj1R+dmleIvEWmKF07X9WswOiwXsiAfgDXbeEdV+NXifenhvWfGWpLGcO8N5IUQ+hcsFB9s17l4g/Zc8KXV6s+ia3qWlQmQGS3cCddueQrHDLxnBJavCfiZ4+1DVNTl0Lw7cS6R4U052ttP0+zkMaMiEjzJMHLu2CxJz1+pP19HH4fMXbDRTfVyW3+bfr8z26denidKUU31utv8AMs+KNU+NvhXYfEer+MtOjdtqyzXknlsfQOCVz7ZrCl8aeMbxdt14s16ZT2bUZcH/AMerW+Gvj7U9DvU0rWppNW8L3xEGpabduZY2iYgMyhvuuv3gRjpXv/hv9mnwhZXr3Gp6rqOqW3mFobYEQoEzlVZlyzcYGQRmpxONw+X6YqCTezit+/o16/M2liKWE/jxXlZb/wCR85+E/DfiLxrra2OlWlzqV0SPMldiyxD+87two+vPpmvrz4N/CzS/AFibiR0vtbnTbcXe3AUf884wei+p6nv2A7Tw/omkeH9OTTtF062sLROkUEYUZ9T6n3PNaNfI5rn9XGr2cFyw7dX6/wCR4+PzepiV7OC5Y/i/X/IKKKK+fPHCiiigAooooAKKKKACiiigApKWkoAWiiigBCM18C/GHwBqvgPxfe211aSjS5p3ksLvafLljJyBu6BhnBB54z0Ir77qO4ghuIjFPEksbdUdQwP4GvXyjNp5bUckrp7o7cDjXhZt2umfBPwm8Cat468T2thY20psVlVr27C/u4Ygct83QsRkBepJ9M198IoVQqjAAwBTLeCG2iEVvDHDGvREUKB+AqWjN82nmVRNxslsisfj5YuSdrJBRRSV5BwC0lLRQAUUUUAFFFecfEL4jPomrvo+l28UlzFtEskuT8zDO1FHUgEEk8cgcmuTG46jgqTq1noY18RToR5ps841b43fFPwfJa3/AI8+GkNlo88gTzYJGDjIzjO5l3YBO1tucGu6+MHxisPBXhLRdW0mwOsXWvKH02LfsVkKq29sAn+NRtHJJ7V4b+0B4Z1Dw74GtZdb+L+o+KLy8uIzHpzyAxOACTKBvPC9jjuPWu78QeGvAnij4HfDix8W+JI/D1+1hCmlXRYffaJdysDwU4XJJGDt5Gef0OpgsvkqFeUPdcmnyqVmkrrR66Pe3S55sa1dOcE9bJq9v+GNzwn8Svi4fF+k6N4t+F/2e31N9qXFpIQIVHLO5LMo2jkglT6ZPFX/AIZ/FzUte+KmsfD/AMS6NaaVf2Qk8hoZmcTGNvmHzAdUIce2a8ouPE3xC+D/AI90LRJfHdv4y0u/kRTbGTzXWMuqY5JaNvmypDEHB4rf/ag0258E/Evwv8WdJjIxcpBf7R95k6Z/34t6f8BFTPLsPVqqlyRXtYvklHm+JeUtr7FKvOMea7916p22fod18Wfi1qXhn4i6F4G8OaNaarqephDJ587IIjI+1Pug9gzH2ArD+Lfx+vdF8d/8K8+HfhOXxd4ojH+kqjMIYGxkrheWIBBY5ULnBOcgc/8As9wN8Q/jl4p+KV1G7WVpKYdO8wcgsNqD6rCvPu9cx+z7rOl+Bf2pPiRo/ja6h07VNUupDZXN2wRZAZ2lChzwN6OjDPB2464FeXmGEoYZxoqN5winLzk9fwXY6sNUnUTm3o3p6Hqvwe+KnxF13xrP4S8ffDC78Pzx2pujfwufsyJzjduJGCQQCrNyDxgEjltW/aM8WeJvFV/o3wZ+Hkniq109ts+ozOyxPyRlQCAqnB2lmyw5xXrPi7xR4e8Rad4i8DeH/Eem3XiafRbloLSC5VpBujZVPHGckcZyAQeleJ/sF+LfC+m+ANT8I6je2ml6/banLNPb3TrE8qlUUMN2MlSpUjqMe9eXGMXGVTk2tpr951eR3PwS+PP/AAmHi648B+MfDc/hTxdACVtJWJSfaNzBdwDK235sHIKgkE1yjftJ+LNR8Z+J/Bfhb4bPrWuabfS21msFyxRo4pHR5pSQNg4TAzyW6jAzznjjVdM8e/tu+C/+EHmivm0WOP8AtO9tSGjIjeR3G8cMArBM+rba1P2Qkjb4+fGWTYCy6kyqxHIBup8j9B+VXKlTjFzceidu2orvYl0P9qXXxNqPhXXfhpfDx5FOtvZaVaM224kPUPuBaPaPmyNwYdCOtbPw+/aA8V/8LTsfh98T/Af/AAjN/qZC2MscjFSzZ2Ag5DKxBXcp4bgjrjBt40P/AAUUuWKLkaQGBx0P2NRn8uKX9qYKP2nPg4wABN7GCR/19J/jRyUnJR5d1f00C7NzxN+0Xr1j8VvEXw80P4fy67qtlJ5OmpbXDFrhwFZmkG3CIqliTnsOnUY+m/tR+I9G1rUPC/j/AOGl5Y+JURRp1jYszNdTOQEiIbOA2ch1LA4IxnFM+C0aN+3P8THZAWSxk2kjpl7fNJ8WI42/b1+HYZFIOmoeR3H2og/hTUKXNyuP2b/gF2aWhftEeNNG+Imk+GPir8Ov+EZt9ZkWO0uUlY7CzBVLZyHAYgNggrnOO1d5onxcudR/aO1n4TtocMcGnWf2lb8XBLufLifBTbgf6wjr2rzP9vJV/tL4YNgZGsSAHHOMwVQs9V0/w1/wUF12fXbuHT4NQ05YbaWdwiMzW8JUbjwMmNgPfip9lCcOZR1s/wAGF2j1z4x/Fy58A/ETwR4Vh0OK/TxNdC3ed7kxm3BljjyFCnd9/PUdK5Lxz+0Vqnh/4w638OdO8CTa5f20aJpq2lwTJdTvHG4DLtwiBWclsnhffI4b9p3xPoWuftLfCrTNI1K2vp9N1KD7WbeQSLG0lzEVUkcbsKSR2yPWtjwTHG//AAUI8YM6BmTSCyEj7p8m2GR+BI/GiNGCgpSX2W/xC7ubvw//AGgfE/8AwtKy+H3xP8CHwvf6mQtlLHKzKWbOwEHIKsQVDKThuCOuLUPjuwb9orxp4UsfAMF9rGkaZJqcF412XlupkhiKRIhXEeS4XIPv3rl/2sAq/tG/BpwACdQQEjr/AMfUX+Jp3gD/AJSC+N/+wOf/AEVaVE8NQqxU5QWiuvJp2uiZQjJrmV7M/9k=";
+
+/* ---------- API — toutes les données sont stockées côté serveur (Cloudflare
+   Worker + D1) afin que l'administrateur, le secrétaire et le trésorier
+   voient et modifient les mêmes données en temps quasi réel.
+   Le Worker sert ce fichier ET l'API sur le même domaine, donc on utilise
+   un chemin relatif : pas besoin de renseigner d'URL. ---------- */
+const API_BASE = "";
+
+const Api = {
+  token: null,
+  async request(path, opts) {
+    opts = opts || {};
+    const headers = Object.assign({ "Content-Type": "application/json" }, opts.headers || {});
+    if (this.token) headers["Authorization"] = "Bearer " + this.token;
+    let res;
+    try {
+      res = await fetch(API_BASE + path, Object.assign({}, opts, { headers }));
+    } catch (e) {
+      throw new Error("Impossible de joindre le serveur. Vérifiez API_BASE et votre connexion.");
+    }
+    if (res.status === 401) { Auth.logout(); throw new Error("Session expirée, reconnectez-vous."); }
+    if (res.status === 402) {
+      let payload = {};
+      try { payload = await res.json(); } catch (e) {}
+      const err = new Error(payload.message || "Licence inactive ou expirée.");
+      err.code = "license_inactive";
+      err.expires = payload.expires || null;
+      throw err;
+    }
+    if (!res.ok) {
+      let msg = "Erreur serveur (" + res.status + ")";
+      try { const j = await res.json(); if (j && j.error) msg = j.error; } catch (e) {}
+      throw new Error(msg);
+    }
+    if (res.status === 204) return null;
+    return res.json();
+  },
+  login(email, password) { return this.request("/api/login", { method: "POST", body: JSON.stringify({ email, password }) }); },
+  fetchData() { return this.request("/api/data"); },
+  licenseStatus() { return this.request("/api/license/status"); },
+  activateLicense(key) { return this.request("/api/license/activate", { method: "POST", body: JSON.stringify({ key }) }); },
+  addMember(m) { return this.request("/api/members", { method: "POST", body: JSON.stringify(m) }); },
+  updateMember(id, m) { return this.request("/api/members/" + id, { method: "PUT", body: JSON.stringify(m) }); },
+  deleteMember(id) { return this.request("/api/members/" + id, { method: "DELETE" }); },
+  addDue(d) { return this.request("/api/dues", { method: "POST", body: JSON.stringify(d) }); },
+  addTransaction(t) { return this.request("/api/transactions", { method: "POST", body: JSON.stringify(t) }); },
+  deleteTransaction(id) { return this.request("/api/transactions/" + id, { method: "DELETE" }); },
+  addReport(r) { return this.request("/api/reports", { method: "POST", body: JSON.stringify(r) }); },
+  decideReport(id, status, observations) { return this.request("/api/reports/" + id, { method: "PATCH", body: JSON.stringify({ status, observations }) }); },
+  saveSettings(s) { return this.request("/api/settings", { method: "PUT", body: JSON.stringify(s) }); },
+  addUser(u) { return this.request("/api/users", { method: "POST", body: JSON.stringify(u) }); },
+  updateUser(id, u) { return this.request("/api/users/" + id, { method: "PUT", body: JSON.stringify(u) }); },
+};
+
+/* ---------- Helpers ---------- */
+const uid = () => Math.random().toString(36).slice(2,10) + Date.now().toString(36).slice(-4);
+const todayISO = () => new Date().toISOString().slice(0,10);
+const fmtDate = (d) => d ? new Date(d).toLocaleDateString('fr-FR') : "—";
+const fmtMoney = (n) => `${(Number(n)||0).toLocaleString('fr-FR')} ${State.data.settings.currency || 'FCFA'}`;
+const esc = (s) => String(s ?? "").replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+function getInitials(name){
+  if (!name || !name.trim()) return "ASSO";
+  const words = name.trim().split(/\s+/).filter(Boolean);
+  if (words.length === 1) return words[0].replace(/[^A-Za-zÀ-ÿ]/g,'').slice(0,4).toUpperCase() || "ASSO";
+  return words.map(w => w[0]).join('').replace(/[^A-Za-zÀ-ÿ]/g,'').slice(0,5).toUpperCase();
+}
+function nextMemberNumber(joinDate){
+  const initials = getInitials(State.data.settings.name);
+  const year = (joinDate || todayISO()).slice(0,4);
+  const count = State.data.members.filter(m => (m.memberNumber||"").includes(`-${year}-`) && (m.memberNumber||"").startsWith(initials+"-")).length + 1;
+  return `${initials}-${year}-${String(count).padStart(4,'0')}`;
+}
+function downloadCSV(filename, rows){
+  const csv = rows.map(r => r.map(c => `"${String(c??"").replace(/"/g,'""')}"`).join(",")).join("\n");
+  const blob = new Blob(["\uFEFF"+csv], {type:"text/csv;charset=utf-8;"});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a'); a.href = url; a.download = filename; a.click();
+  URL.revokeObjectURL(url);
+}
+function logoImgOrFallback(size){
+  const s = State.data.settings;
+  if (s.logo) return `<img src="${s.logo}" style="width:${size}px;height:${size}px;border-radius:${Math.round(size*0.28)}px;object-fit:contain;background:#fff;border:1px solid var(--line);">`;
+  return `<div class="fallback" style="width:${size}px;height:${size}px;border-radius:${Math.round(size*0.28)}px;font-size:${Math.round(size*0.36)}px;">${esc(getInitials(s.name).slice(0,2))}</div>`;
+}
+
+const CATEGORIES = ["Membre actif","Membre honoraire","Membre bienfaiteur","Membre fondateur","Sympathisant"];
+const ROLES = [
+  {key:"administrateur", label:"Administrateur", icon:"fa-shield-halved", color:"var(--blue)"},
+  {key:"secretaire", label:"Secrétaire", icon:"fa-file-lines", color:"var(--green)"},
+  {key:"tresorier", label:"Trésorier", icon:"fa-building-columns", color:"var(--orange)"},
+];
+const NAV = {
+  administrateur: [
+    {key:"dashboard", label:"Tableau de bord", icon:"fa-gauge-high"},
+    {key:"members", label:"Membres", icon:"fa-users"},
+    {key:"cards", label:"Carte de membre", icon:"fa-id-card"},
+    {key:"dues", label:"Cotisations", icon:"fa-wallet"},
+    {key:"accounting", label:"Comptabilité", icon:"fa-building-columns"},
+    {key:"users", label:"Utilisateurs", icon:"fa-user-gear"},
+    {key:"validation", label:"Validation", icon:"fa-clipboard-check"},
+    {key:"reports", label:"Rapports", icon:"fa-chart-column"},
+    {key:"settings", label:"Paramètres", icon:"fa-gear"},
+  ],
+  secretaire: [
+    {key:"dashboard", label:"Tableau de bord", icon:"fa-gauge-high"},
+    {key:"members", label:"Membres", icon:"fa-users"},
+    {key:"meetings", label:"Réunions", icon:"fa-calendar-days"},
+  ],
+  tresorier: [
+    {key:"dashboard", label:"Tableau de bord", icon:"fa-gauge-high"},
+    {key:"accounting", label:"Comptabilité", icon:"fa-building-columns"},
+    {key:"reports", label:"Rapports", icon:"fa-chart-column"},
+  ],
+};
+
+/* ---------- State ---------- */
+const State = {
+  data: {
+    settings: { name:"EasyCommunity", shortName:"EC", address:"", phone:"", email:"", website:"", regNumber:"", president:"", currency:"FCFA", createdDate:"", slogan:"Gérer • Connecter • Développer", logo: "" },
+    members: [],
+    dues: [],
+    transactions: [],
+    users: [],
+    reports: [],
+  },
+  role: "administrateur",
+  page: "dashboard",
+  printView: null,
+  lastSync: null,
+  license: { active: null, expires: null },
+};
+
+// Recharge toutes les données depuis le serveur et met à jour l'affichage.
+async function refreshData(silent){
+  try {
+    const d = await Api.fetchData();
+    State.data.settings = d.settings || State.data.settings;
+    State.data.members = d.members || [];
+    State.data.dues = d.dues || [];
+    State.data.transactions = d.transactions || [];
+    State.data.reports = d.reports || [];
+    if (d.users) State.data.users = d.users;
+    State.license = { active: true, expires: State.license.expires };
+    State.lastSync = new Date();
+    render();
+  } catch (e) {
+    if (e.code === 'license_inactive') {
+      State.license = { active: false, expires: e.expires || null };
+      render();
+      return;
+    }
+    if (!silent) alert(e.message);
+  }
+}
+
+/* ---------- Auth ---------- */
+const Auth = {
+  session: null,
+  loadSession(){
+    try {
+      const raw = sessionStorage.getItem('ec-session');
+      if (raw) { this.session = JSON.parse(raw); Api.token = this.session.token; }
+    } catch(e){}
+  },
+  async attempt(){
+    const email = document.getElementById('login-email').value.trim();
+    const password = document.getElementById('login-password').value;
+    const err = document.getElementById('login-error');
+    err.style.display = 'none';
+    try {
+      const res = await Api.login(email, password);
+      this.session = { token: res.token, userId: res.user.id, role: res.user.role, name: res.user.name };
+      Api.token = res.token;
+      try { sessionStorage.setItem('ec-session', JSON.stringify(this.session)); } catch(e){}
+      State.role = res.user.role; State.page = 'dashboard';
+      await refreshData(true);
+      startPolling();
+    } catch (e) {
+      err.textContent = e.message || "Identifiants incorrects ou compte désactivé.";
+      err.style.display = 'block';
+    }
+  },
+  logout(){
+    this.session = null; Api.token = null;
+    stopPolling();
+    try { sessionStorage.removeItem('ec-session'); } catch(e){}
+    render();
+  }
+};
+
+/* ---------- License activation (admin) / blocked screen (autres rôles) ---------- */
+const LicenseUI = {
+  async activate(){
+    const key = document.getElementById('license-key-input').value.trim();
+    const btn = document.getElementById('license-activate-btn');
+    const err = document.getElementById('license-error');
+    if (err) err.style.display = 'none';
+    if (!key) return;
+    if (btn) btn.disabled = true;
+    try {
+      const res = await Api.activateLicense(key);
+      State.license = { active: true, expires: res.expires };
+      await refreshData(true);
+      startPolling();
+    } catch (e) {
+      if (err) { err.textContent = e.message || "Clé de licence invalide."; err.style.display = 'block'; }
+    } finally {
+      if (btn) btn.disabled = false;
+    }
+  }
+};
+function renderLicenseScreen(){
+  const el = document.getElementById('license-card-content');
+  const isAdmin = State.role === 'administrateur';
+  const expiresTxt = State.license.expires ? fmtDate(State.license.expires) : null;
+  if (isAdmin) {
+    el.innerHTML = `
+      <div class="license-icon"><i class="fa-solid fa-key"></i></div>
+      <div style="font-weight:800;font-size:16px;margin-bottom:6px;">${expiresTxt ? "Licence expirée" : "Activation requise"}</div>
+      <div style="font-size:12.5px;color:#94A3B8;margin-bottom:18px;">${expiresTxt ? `Votre licence a expiré le ${expiresTxt}. Saisissez une nouvelle clé fournie par votre prestataire pour continuer.` : "Saisissez la clé de licence fournie par votre prestataire pour activer l'application."}</div>
+      <div class="login-error" id="license-error"></div>
+      <input class="input" id="license-key-input" placeholder="Ex : 2027-01-01.9f3a7b21c4d8e6f1a2b3" style="text-align:center;margin-bottom:12px;">
+      <button class="btn btn-primary" id="license-activate-btn" style="width:100%;justify-content:center;" onclick="LicenseUI.activate()">Activer la licence</button>
+      <button class="logout-link" style="margin-top:16px;" onclick="Auth.logout()"><i class="fa-solid fa-right-from-bracket"></i> Se déconnecter</button>
+    `;
+  } else {
+    el.innerHTML = `
+      <div class="license-icon"><i class="fa-solid fa-lock"></i></div>
+      <div style="font-weight:800;font-size:16px;margin-bottom:6px;">Accès suspendu</div>
+      <div style="font-size:12.5px;color:#94A3B8;margin-bottom:18px;">L'abonnement de votre association est inactif ou expiré. Contactez votre administrateur pour le renouveler.</div>
+      <button class="logout-link" onclick="Auth.logout()"><i class="fa-solid fa-right-from-bracket"></i> Se déconnecter</button>
+    `;
+  }
+}
+
+/* ---------- Live sync: poll the server so the admin and the team see
+   each other's changes without needing to refresh the page ---------- */
+let _pollTimer = null;
+function startPolling(){
+  stopPolling();
+  _pollTimer = setInterval(() => {
+    // ne rafraîchit pas si une fenêtre modale est ouverte, pour ne pas
+    // interrompre une saisie en cours
+    const modalOpen = document.querySelector('.modal-overlay.open');
+    if (!modalOpen && Auth.session) refreshData(true);
+  }, 8000);
+}
+function stopPolling(){ if (_pollTimer) { clearInterval(_pollTimer); _pollTimer = null; } }
+async function manualRefresh(){
+  const btn = document.getElementById('sync-btn');
+  if (btn) btn.classList.add('spinning');
+  await refreshData(false);
+  if (btn) btn.classList.remove('spinning');
+}
+/* ---------- UI shell ---------- */
+const UI = {
+  openMobileNav(){ document.getElementById('sidebar').classList.add('open'); document.getElementById('sidebar-scrim').classList.add('show'); },
+  closeMobileNav(){ document.getElementById('sidebar').classList.remove('open'); document.getElementById('sidebar-scrim').classList.remove('show'); },
+  setRole(role){ State.role = role; State.page = "dashboard"; this.closeMobileNav(); render(); },
+  setPage(page){ State.page = page; this.closeMobileNav(); render(); },
+  openModal(id){ document.getElementById(id).classList.add('open'); },
+  closeModal(id){ document.getElementById(id).classList.remove('open'); },
+};
+
+function renderSidebar(){
+  const roleInfo = ROLES.find(r=>r.key===State.role);
+  const nav = NAV[State.role];
+  const sessionUser = State.data.users.find(u=>u.id===(Auth.session&&Auth.session.userId));
+  return `
+  <div class="brand">
+    ${logoImgOrFallback(38)}
+    <div style="min-width:0;">
+      <div class="brand-name" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:170px;">${esc(State.data.settings.name || "EasyCommunity")}</div>
+      <div class="brand-slogan" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:170px;">${esc(State.data.settings.slogan||"")}</div>
+    </div>
+  </div>
+  <div class="session-box">
+    <div class="who">${esc(sessionUser?sessionUser.name:(Auth.session?Auth.session.name:''))}</div>
+    <div class="role"><i class="fa-solid ${roleInfo.icon}" style="color:${roleInfo.color};margin-right:5px;"></i>${roleInfo.label}</div>
+    <button class="logout-link" onclick="Auth.logout()"><i class="fa-solid fa-right-from-bracket"></i> Se déconnecter</button>
+  </div>
+  <div class="side-section-title">Menu</div>
+  <nav class="nav">
+    ${nav.map(item=>`<button class="nav-btn ${item.key===State.page?'active':''}" style="${item.key===State.page?`box-shadow:inset 3px 0 0 ${roleInfo.color}`:''}" onclick="UI.setPage('${item.key}')"><i class="fa-solid ${item.icon}" style="${item.key===State.page?`color:${roleInfo.color}`:''}"></i>${item.label}</button>`).join('')}
+  </nav>
+  <div class="side-foot">${esc(State.data.settings.name||"EasyCommunity")} © ${new Date().getFullYear()}</div>
+  `;
+}
+
+function renderTopbar(){
+  const roleInfo = ROLES.find(r=>r.key===State.role);
+  const navItem = NAV[State.role].find(n=>n.key===State.page);
+  document.getElementById('topbar-role').textContent = roleInfo.label;
+  document.getElementById('topbar-title').textContent = navItem ? navItem.label : "";
+  const av = document.getElementById('topbar-avatar');
+  av.style.background = roleInfo.color; av.textContent = roleInfo.label[0];
+}
+
+function renderRoleBar(){
+  document.getElementById('role-bar').innerHTML = ROLES.map(r=>
+    `<button class="role-pill ${r.key===State.role?'active':''}" style="${r.key===State.role?`background:${r.color}`:''}" onclick="UI.setRole('${r.key}')"><i class="fa-solid ${r.icon}"></i>${r.label}</button>`
+  ).join('');
+}
+
+/* ---------- Shared components (as HTML strings) ---------- */
+function statCard(icon, label, value, tint, sub){
+  return `<div class="card stat-card">
+    <div class="stat-icon" style="background:${tint}1a;color:${tint}"><i class="fa-solid ${icon}"></i></div>
+    <div style="min-width:0;">
+      <div class="stat-label">${label}</div>
+      <div class="stat-value">${value}</div>
+      ${sub?`<div class="stat-sub">${sub}</div>`:''}
+    </div>
+  </div>`;
+}
+function badge(text, tone){ return `<span class="badge badge-${tone}">${text}</span>`; }
+function emptyState(icon, title, sub){
+  return `<div class="empty"><i class="fa-solid ${icon}"></i><div class="t">${title}</div>${sub?`<div class="s">${sub}</div>`:''}</div>`;
+}
+function qrUrl(data, size){ return `https://api.qrserver.com/v1/create-qr-code/?size=${size}x${size}&data=${encodeURIComponent(data)}`; }
+
+/* ============================================================
+   PAGES
+   ============================================================ */
+
+function pageDashboard(){
+  const {members, dues, transactions, reports} = State.data;
+  const monthKey = todayISO().slice(0,7);
+  const newMembers = members.filter(m => (m.joinDate||"").slice(0,7)===monthKey).length;
+  const duesThisMonth = dues.filter(d => (d.date||"").slice(0,7)===monthKey).reduce((s,d)=>s+Number(d.amount||0),0);
+  const totalIncome = transactions.filter(t=>t.type==='recette').reduce((s,t)=>s+Number(t.amount||0),0) + dues.reduce((s,d)=>s+Number(d.amount||0),0);
+  const totalExpense = transactions.filter(t=>t.type==='depense').reduce((s,t)=>s+Number(t.amount||0),0);
+  const balance = totalIncome - totalExpense;
+  const pendingReports = reports.filter(r=>r.status==='en_attente').length;
+
+  let statGrid = '';
+  if (State.role === 'administrateur'){
+    statGrid = `<div class="stat-grid">
+      ${statCard('fa-users','Total membres',members.length,'var(--blue)')}
+      ${statCard('fa-plus','Nouveaux adhérents',newMembers,'var(--green)','ce mois-ci')}
+      ${statCard('fa-wallet','Cotisations du mois',fmtMoney(duesThisMonth),'var(--orange)')}
+      ${statCard('fa-building-columns','Solde de caisse',fmtMoney(balance),'var(--blue-dark)')}
+      ${statCard('fa-arrow-up','Total recettes',fmtMoney(totalIncome),'var(--green)')}
+      ${statCard('fa-arrow-down','Total dépenses',fmtMoney(totalExpense),'var(--red)')}
+      ${statCard('fa-clock','Rapports en attente',pendingReports,'var(--orange)')}
+      ${statCard('fa-bell','Notifications',pendingReports+newMembers,'var(--blue)')}
+    </div>`;
+  } else if (State.role === 'secretaire'){
+    statGrid = `<div class="stat-grid">
+      ${statCard('fa-users','Total membres',members.length,'var(--blue)')}
+      ${statCard('fa-plus','Nouveaux membres',newMembers,'var(--green)','ce mois-ci')}
+      ${statCard('fa-wallet','Cotisations du mois',fmtMoney(duesThisMonth),'var(--orange)')}
+      ${statCard('fa-calendar-days','Comptes rendus',reports.filter(r=>r.kind==='meeting').length,'var(--blue-dark)')}
+    </div>`;
+  } else {
+    const incMonth = transactions.filter(t=>t.type==='recette'&&(t.date||"").slice(0,7)===monthKey).reduce((s,t)=>s+Number(t.amount||0),0)+duesThisMonth;
+    const expMonth = transactions.filter(t=>t.type==='depense'&&(t.date||"").slice(0,7)===monthKey).reduce((s,t)=>s+Number(t.amount||0),0);
+    statGrid = `<div class="stat-grid">
+      ${statCard('fa-building-columns','Solde actuel',fmtMoney(balance),'var(--blue-dark)')}
+      ${statCard('fa-arrow-up','Recettes du mois',fmtMoney(incMonth),'var(--green)')}
+      ${statCard('fa-arrow-down','Dépenses du mois',fmtMoney(expMonth),'var(--red)')}
+      ${statCard('fa-wallet','Cotisations encaissées',fmtMoney(dues.reduce((s,d)=>s+Number(d.amount||0),0)),'var(--orange)')}
+    </div>`;
+  }
+
+  const recent = [
+    ...members.slice(-4).map(m=>({text:`Nouveau membre : ${esc(m.firstName)} ${esc(m.lastName)}`, date:m.joinDate, tone:'blue'})),
+    ...transactions.slice(-4).map(t=>({text:`${t.type==='recette'?'Recette':'Dépense'} : ${esc(t.description)} (${fmtMoney(t.amount)})`, date:t.date, tone:t.type==='recette'?'green':'red'})),
+    ...dues.slice(-4).map(d=>({text:`Cotisation encaissée : ${fmtMoney(d.amount)}`, date:d.date, tone:'orange'})),
+  ].sort((a,b)=>(b.date||"").localeCompare(a.date||"")).slice(0,6);
+
+  const colorMap = {blue:'var(--blue)',green:'var(--green)',orange:'var(--orange)',red:'var(--red)'};
+  return `
+    ${statGrid}
+    <div class="card pad" style="margin-top:20px;">
+      <h3 class="section-title">Dernières activités</h3>
+      ${recent.length===0 ? emptyState('fa-bell','Aucune activité récente','Les actions récentes apparaîtront ici.') :
+      `<div style="display:flex;flex-direction:column;gap:11px;">
+        ${recent.map(r=>`<div style="display:flex;align-items:center;gap:11px;font-size:13.5px;">
+          <span style="width:8px;height:8px;border-radius:999px;background:${colorMap[r.tone]};flex-shrink:0;"></span>
+          <span style="flex:1;color:#475569;">${r.text}</span>
+          <span style="color:#A6B0C0;font-size:12px;flex-shrink:0;">${fmtDate(r.date)}</span>
+        </div>`).join('')}
+      </div>`}
+    </div>
+  `;
+}
+
+/* ---------- Members ---------- */
+const Members = {
+  query: "",
+  setQuery(v){ this.query = v; renderPage(); },
+  openAdd(){
+    document.getElementById('member-modal-title').textContent = "Ajouter un membre";
+    document.getElementById('mf-id').value = uid();
+    document.getElementById('mf-firstname').value = "";
+    document.getElementById('mf-lastname').value = "";
+    document.getElementById('mf-joindate').value = todayISO();
+    document.getElementById('mf-membernumber').value = nextMemberNumber(todayISO());
+    document.getElementById('mf-category').value = CATEGORIES[0];
+    document.getElementById('mf-profession').value = "";
+    document.getElementById('mf-phone').value = "";
+    document.getElementById('mf-email').value = "";
+    document.getElementById('mf-address').value = "";
+    document.getElementById('mf-status').value = "actif";
+    this._setPhoto("");
+    this._isNew = true;
+    UI.openModal('modal-member');
+  },
+  openEdit(id){
+    const m = State.data.members.find(x=>x.id===id); if(!m) return;
+    document.getElementById('member-modal-title').textContent = "Modifier le membre";
+    document.getElementById('mf-id').value = m.id;
+    document.getElementById('mf-firstname').value = m.firstName;
+    document.getElementById('mf-lastname').value = m.lastName;
+    document.getElementById('mf-joindate').value = m.joinDate;
+    document.getElementById('mf-membernumber').value = m.memberNumber;
+    document.getElementById('mf-category').value = m.category;
+    document.getElementById('mf-profession').value = m.profession||"";
+    document.getElementById('mf-phone').value = m.phone||"";
+    document.getElementById('mf-email').value = m.email||"";
+    document.getElementById('mf-address').value = m.address||"";
+    document.getElementById('mf-status').value = m.status;
+    this._setPhoto(m.photo||"");
+    this._isNew = false;
+    UI.openModal('modal-member');
+  },
+  onJoinDateChange(){
+    if (this._isNew) document.getElementById('mf-membernumber').value = nextMemberNumber(document.getElementById('mf-joindate').value);
+  },
+  handlePhoto(e){
+    const file = e.target.files[0]; if(!file) return;
+    const reader = new FileReader();
+    reader.onload = () => Members._setPhoto(reader.result);
+    reader.readAsDataURL(file);
+  },
+  _setPhoto(dataUrl){
+    const img = document.getElementById('mf-photo-preview'); const empty = document.getElementById('mf-photo-empty');
+    if (dataUrl){ img.src = dataUrl; img.style.display='block'; empty.style.display='none'; }
+    else { img.style.display='none'; empty.style.display='flex'; }
+  },
+  async save(){
+    const firstName = document.getElementById('mf-firstname').value.trim();
+    const lastName = document.getElementById('mf-lastname').value.trim();
+    if (!firstName || !lastName) return;
+    const img = document.getElementById('mf-photo-preview');
+    const member = {
+      id: document.getElementById('mf-id').value,
+      firstName, lastName,
+      memberNumber: document.getElementById('mf-membernumber').value,
+      category: document.getElementById('mf-category').value,
+      profession: document.getElementById('mf-profession').value.trim(),
+      phone: document.getElementById('mf-phone').value.trim(),
+      email: document.getElementById('mf-email').value.trim(),
+      address: document.getElementById('mf-address').value.trim(),
+      joinDate: document.getElementById('mf-joindate').value,
+      status: document.getElementById('mf-status').value,
+      photo: (img.style.display!=='none' && img.src.startsWith('data:')) ? img.src : "",
+    };
+    try {
+      const exists = State.data.members.some(m=>m.id===member.id);
+      if (exists) await Api.updateMember(member.id, member); else await Api.addMember(member);
+      UI.closeModal('modal-member');
+      await refreshData(true);
+    } catch (e) { alert(e.message); }
+  },
+  async remove(id){
+    if (!confirm('Supprimer ce membre ?')) return;
+    try {
+      await Api.deleteMember(id);
+      UI.closeModal('modal-profile');
+      await refreshData(true);
+    } catch (e) { alert(e.message); }
+  },
+  openProfile(id){
+    const m = State.data.members.find(x=>x.id===id); if(!m) return;
+    const dues = State.data.dues.filter(d=>d.memberId===id).sort((a,b)=>b.date.localeCompare(a.date));
+    document.getElementById('profile-body').innerHTML = `
+      <div style="display:flex;align-items:center;gap:14px;margin-bottom:18px;">
+        ${m.photo ? `<img src="${m.photo}" style="width:76px;height:76px;border-radius:999px;object-fit:cover;">` : `<div class="thumb-empty" style="width:76px;height:76px;font-size:24px;"><i class="fa-solid fa-user"></i></div>`}
+        <div>
+          <div style="font-weight:800;font-size:17px;">${esc(m.firstName)} ${esc(m.lastName)}</div>
+          <div style="font-size:12.5px;color:#94A3B8;margin-bottom:5px;">${esc(m.memberNumber)}</div>
+          ${badge(m.status==='actif'?'Actif':'Inactif', m.status==='actif'?'green':'red')}
+        </div>
+        <img src="${qrUrl(m.memberNumber+'|'+m.firstName+' '+m.lastName, 70)}" style="margin-left:auto;width:60px;height:60px;">
+      </div>
+      <div class="grid2" style="font-size:13.5px;margin-bottom:16px;">
+        <div><div style="font-size:11px;color:#94A3B8;">Catégorie</div><div style="font-weight:600;">${esc(m.category)}</div></div>
+        <div><div style="font-size:11px;color:#94A3B8;">Profession</div><div style="font-weight:600;">${esc(m.profession)||'—'}</div></div>
+        <div><div style="font-size:11px;color:#94A3B8;">Téléphone</div><div style="font-weight:600;">${esc(m.phone)||'—'}</div></div>
+        <div><div style="font-size:11px;color:#94A3B8;">E-mail</div><div style="font-weight:600;">${esc(m.email)||'—'}</div></div>
+        <div class="span2"><div style="font-size:11px;color:#94A3B8;">Adresse</div><div style="font-weight:600;">${esc(m.address)||'—'}</div></div>
+        <div><div style="font-size:11px;color:#94A3B8;">Date d'adhésion</div><div style="font-weight:600;">${fmtDate(m.joinDate)}</div></div>
+      </div>
+      <div style="font-size:11.5px;font-weight:700;color:#64748B;margin-bottom:8px;">Historique des cotisations</div>
+      ${dues.length===0 ? `<div style="font-size:13px;color:#94A3B8;">Aucune cotisation enregistrée.</div>` :
+        `<div style="display:flex;flex-direction:column;gap:6px;max-height:110px;overflow-y:auto;margin-bottom:16px;">
+          ${dues.map(d=>`<div style="display:flex;justify-content:space-between;font-size:13px;background:#F8FAFC;padding:7px 11px;border-radius:9px;">
+            <span>${esc(d.period)}</span><span style="color:#94A3B8;">${fmtDate(d.date)}</span><span style="font-weight:700;">${fmtMoney(d.amount)}</span>
+          </div>`).join('')}
+        </div>`}
+      <div style="display:flex;justify-content:flex-end;gap:8px;">
+        <button class="btn btn-outline btn-sm" onclick="Cards.print('${m.id}')"><i class="fa-solid fa-id-card"></i> Carte de membre</button>
+      </div>
+    `;
+    UI.openModal('modal-profile');
+  },
+  render(){
+    const readOnly = State.role !== 'administrateur';
+    const q = this.query.toLowerCase();
+    const filtered = State.data.members.filter(m => !q || `${m.firstName} ${m.lastName} ${m.memberNumber} ${m.phone} ${m.email}`.toLowerCase().includes(q));
+    return `
+      <div style="display:flex;flex-wrap:wrap;gap:12px;align-items:center;justify-content:space-between;margin-bottom:18px;">
+        <div style="position:relative;flex:1;max-width:340px;">
+          <i class="fa-solid fa-magnifying-glass" style="position:absolute;left:13px;top:50%;transform:translateY(-50%);color:#94A3B8;font-size:13px;"></i>
+          <input class="input" style="padding-left:34px;" placeholder="Rechercher un membre..." value="${esc(this.query)}" oninput="Members.setQuery(this.value)">
+        </div>
+        ${!readOnly ? `<button class="btn btn-primary" onclick="Members.openAdd()"><i class="fa-solid fa-plus"></i> Ajouter un membre</button>` : ''}
+      </div>
+      <div class="card" style="overflow:hidden;">
+        ${filtered.length===0 ? emptyState('fa-users','Aucun membre trouvé', readOnly?'La liste des membres apparaîtra ici.':'Ajoutez votre premier membre pour commencer.') :
+        `<div class="table-wrap"><table>
+          <thead><tr><th>Membre</th><th class="hide-sm">N° adhésion</th><th class="hide-md">Catégorie</th><th class="hide-lg">Contact</th><th>Statut</th><th style="text-align:right;">Actions</th></tr></thead>
+          <tbody>
+            ${filtered.map(m=>`<tr>
+              <td><button style="all:unset;cursor:pointer;display:flex;align-items:center;gap:10px;" onclick="Members.openProfile('${m.id}')">
+                ${m.photo ? `<img src="${m.photo}" style="width:36px;height:36px;border-radius:999px;object-fit:cover;">` : `<div class="thumb-empty" style="width:36px;height:36px;font-size:11px;font-weight:800;color:#64748B;background:#E2E8F0;">${esc((m.firstName[0]||'')+(m.lastName[0]||''))}</div>`}
+                <div><div style="font-weight:700;color:#1E293B;">${esc(m.firstName)} ${esc(m.lastName)}</div></div>
+              </button></td>
+              <td class="hide-sm" style="color:#64748B;">${esc(m.memberNumber)}</td>
+              <td class="hide-md" style="color:#64748B;">${esc(m.category)}</td>
+              <td class="hide-lg" style="color:#64748B;">${esc(m.phone)||'—'}</td>
+              <td>${badge(m.status==='actif'?'Actif':'Inactif', m.status==='actif'?'green':'red')}</td>
+              <td style="text-align:right;">
+                <button class="icon-btn" title="Carte de membre" onclick="Cards.print('${m.id}')"><i class="fa-solid fa-id-card"></i></button>
+                ${!readOnly ? `<button class="icon-btn" title="Modifier" onclick="Members.openEdit('${m.id}')"><i class="fa-solid fa-pen"></i></button>
+                <button class="icon-btn danger" title="Supprimer" onclick="Members.remove('${m.id}')"><i class="fa-solid fa-trash"></i></button>` : ''}
+              </td>
+            </tr>`).join('')}
+          </tbody>
+        </table></div>`}
+      </div>
+    `;
+  }
+};
+
+/* ---------- Cards (membership card) ---------- */
+const Cards = {
+  query:"",
+  setQuery(v){ this.query=v; renderPage(); },
+  print(memberId){
+    const m = State.data.members.find(x=>x.id===memberId); if(!m) return;
+    const s = State.data.settings;
+    const qr = qrUrl((m.memberNumber||"")+'|'+m.firstName+' '+m.lastName, 140);
+    State.printView = `
+      <div class="print-screen">
+        <style>@media print{.no-print{display:none!important;}}</style>
+        <div class="no-print" style="display:flex;gap:10px;margin-bottom:24px;">
+          <button class="btn btn-secondary" onclick="PrintView.close()"><i class="fa-solid fa-arrow-left"></i> Retour</button>
+          <button class="btn btn-primary" onclick="window.print()"><i class="fa-solid fa-print"></i> Imprimer / PDF</button>
+        </div>
+        <div style="width:340px;border-radius:18px;overflow:hidden;box-shadow:0 15px 40px rgba(0,0,0,.18);margin-bottom:18px;">
+          <div style="padding:16px;color:#fff;background:linear-gradient(135deg,var(--blue),var(--blue-dark));display:flex;align-items:center;gap:9px;">
+            ${logoImgOrFallback(36)}
+            <div><div style="font-weight:800;font-size:14px;line-height:1.2;">${esc(s.name)}</div><div style="font-size:10px;opacity:.85;">Carte de membre</div></div>
+          </div>
+          <div style="background:#fff;padding:16px;display:flex;gap:12px;">
+            ${m.photo ? `<img src="${m.photo}" style="width:80px;height:96px;border-radius:10px;object-fit:cover;border:1px solid var(--line);">` : `<div class="thumb-empty" style="width:80px;height:96px;border-radius:10px;"><i class="fa-solid fa-user"></i></div>`}
+            <div style="min-width:0;color:#334155;">
+              <div style="font-weight:800;font-size:15px;line-height:1.2;">${esc(m.firstName)} ${esc(m.lastName)}</div>
+              <div style="font-size:11px;color:#94A3B8;margin-bottom:6px;">${esc(m.memberNumber)}</div>
+              <div style="font-size:11px;line-height:1.7;">
+                <div><span style="color:#94A3B8;">Catégorie: </span>${esc(m.category)}</div>
+                <div><span style="color:#94A3B8;">Statut: </span>${m.status==='actif'?'Actif':'Inactif'}</div>
+                <div><span style="color:#94A3B8;">Depuis: </span>${fmtDate(m.joinDate)}</div>
+              </div>
+            </div>
+          </div>
+          <div style="padding:0 16px 16px;display:flex;align-items:center;justify-content:space-between;border-top:1px solid #F1F5F9;padding-top:12px;">
+            <div style="font-size:10px;color:#94A3B8;line-height:1.4;">${esc(s.address)}<br>${esc(s.phone)}</div>
+            <img src="${qr}" style="width:56px;height:56px;">
+          </div>
+          <div style="height:6px;background:linear-gradient(90deg,var(--green),var(--orange));"></div>
+        </div>
+        <div class="no-print" style="font-size:12px;color:#94A3B8;">Aperçu — utilisez « Imprimer / PDF » pour enregistrer la carte.</div>
+      </div>
+    `;
+    renderPrint();
+  },
+  render(){
+    const q = this.query.toLowerCase();
+    const filtered = State.data.members.filter(m => !q || `${m.firstName} ${m.lastName} ${m.memberNumber}`.toLowerCase().includes(q));
+    return `
+      <div style="position:relative;max-width:340px;margin-bottom:18px;">
+        <i class="fa-solid fa-magnifying-glass" style="position:absolute;left:13px;top:50%;transform:translateY(-50%);color:#94A3B8;font-size:13px;"></i>
+        <input class="input" style="padding-left:34px;" placeholder="Rechercher un membre pour générer sa carte..." value="${esc(this.query)}" oninput="Cards.setQuery(this.value)">
+      </div>
+      ${filtered.length===0 ? `<div class="card">${emptyState('fa-id-card','Aucun membre à afficher','Ajoutez des membres pour générer leurs cartes.')}</div>` :
+      `<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:14px;">
+        ${filtered.map(m=>`<div class="card pad" style="display:flex;align-items:center;gap:11px;">
+          ${m.photo ? `<img src="${m.photo}" style="width:44px;height:44px;border-radius:999px;object-fit:cover;">` : `<div class="thumb-empty" style="width:44px;height:44px;font-size:12px;font-weight:800;color:#64748B;background:#E2E8F0;">${esc((m.firstName[0]||'')+(m.lastName[0]||''))}</div>`}
+          <div style="min-width:0;flex:1;">
+            <div style="font-weight:700;font-size:13.5px;color:#1E293B;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${esc(m.firstName)} ${esc(m.lastName)}</div>
+            <div style="font-size:11.5px;color:#94A3B8;">${esc(m.memberNumber)}</div>
+          </div>
+          <button class="btn btn-outline btn-sm" onclick="Cards.print('${m.id}')"><i class="fa-solid fa-print"></i> Générer</button>
+        </div>`).join('')}
+      </div>`}
+    `;
+  }
+};
+
+/* ---------- Dues (cotisations) ---------- */
+const Dues = {
+  openAdd(){
+    const opts = State.data.members.map(m=>`<option value="${m.id}">${esc(m.firstName)} ${esc(m.lastName)}</option>`).join('');
+    document.getElementById('df-member').innerHTML = opts || '<option value="">Aucun membre</option>';
+    document.getElementById('df-amount').value = "";
+    document.getElementById('df-date').value = todayISO();
+    document.getElementById('df-period').value = new Date().toLocaleDateString('fr-FR',{month:'long',year:'numeric'});
+    document.getElementById('df-mode').value = "Espèces";
+    UI.openModal('modal-due');
+  },
+  async save(){
+    const memberId = document.getElementById('df-member').value;
+    const amount = document.getElementById('df-amount').value;
+    if (!memberId || !amount) return;
+    const due = { id: uid(), memberId, amount, date: document.getElementById('df-date').value, period: document.getElementById('df-period').value, mode: document.getElementById('df-mode').value };
+    try {
+      await Api.addDue(due);
+      UI.closeModal('modal-due');
+      await refreshData(true);
+    } catch (e) { alert(e.message); }
+  },
+  printReceipt(id){
+    const due = State.data.dues.find(d=>d.id===id); if(!due) return;
+    const m = State.data.members.find(x=>x.id===due.memberId);
+    const s = State.data.settings;
+    State.printView = `
+      <div class="print-screen">
+        <style>@media print{.no-print{display:none!important;}}</style>
+        <div class="no-print" style="display:flex;gap:10px;margin-bottom:24px;">
+          <button class="btn btn-secondary" onclick="PrintView.close()"><i class="fa-solid fa-arrow-left"></i> Retour</button>
+          <button class="btn btn-primary" onclick="window.print()"><i class="fa-solid fa-print"></i> Imprimer / PDF</button>
+        </div>
+        <div style="width:420px;background:#fff;border-radius:18px;box-shadow:0 15px 40px rgba(0,0,0,.18);padding:24px;">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;padding-bottom:16px;border-bottom:1px solid #F1F5F9;">
+            ${logoImgOrFallback(42)}
+            <div><div style="font-weight:800;color:var(--blue);">${esc(s.name)}</div><div style="font-size:11px;color:#94A3B8;">${esc(s.address)}</div></div>
+          </div>
+          <h2 style="text-align:center;font-weight:800;color:#1E293B;margin:0 0 16px;">Reçu de cotisation</h2>
+          <div style="font-size:13.5px;display:flex;flex-direction:column;gap:8px;">
+            <div style="display:flex;justify-content:space-between;"><span style="color:#94A3B8;">Membre</span><span style="font-weight:700;">${m?esc(m.firstName)+' '+esc(m.lastName):'—'}</span></div>
+            <div style="display:flex;justify-content:space-between;"><span style="color:#94A3B8;">N° adhésion</span><span>${esc(m?.memberNumber||'')}</span></div>
+            <div style="display:flex;justify-content:space-between;"><span style="color:#94A3B8;">Période</span><span>${esc(due.period)}</span></div>
+            <div style="display:flex;justify-content:space-between;"><span style="color:#94A3B8;">Date</span><span>${fmtDate(due.date)}</span></div>
+            <div style="display:flex;justify-content:space-between;"><span style="color:#94A3B8;">Mode</span><span>${esc(due.mode)}</span></div>
+            <div style="display:flex;justify-content:space-between;font-size:16px;padding-top:10px;margin-top:6px;border-top:1px solid #F1F5F9;"><span style="font-weight:800;">Montant</span><span style="font-weight:800;color:var(--green);">${fmtMoney(due.amount)}</span></div>
+          </div>
+          <div style="margin-top:28px;text-align:center;font-size:11px;color:#94A3B8;">Merci pour votre engagement envers ${esc(s.name)}.</div>
+        </div>
+      </div>
+    `;
+    renderPrint();
+  },
+  render(){
+    const monthKey = todayISO().slice(0,7);
+    const late = State.data.members.filter(m => !State.data.dues.some(d=>d.memberId===m.id && (d.date||"").slice(0,7)===monthKey));
+    const sorted = [...State.data.dues].sort((a,b)=>b.date.localeCompare(a.date));
+    return `
+      <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:18px;">
+        <div style="font-size:13.5px;color:#64748B;">${State.data.dues.length} paiement(s) enregistré(s)</div>
+        <button class="btn btn-primary" onclick="Dues.openAdd()"><i class="fa-solid fa-plus"></i> Enregistrer un paiement</button>
+      </div>
+      <div class="card pad" style="margin-bottom:18px;">
+        <h3 class="section-title"><i class="fa-solid fa-bell" style="color:var(--orange);margin-right:6px;"></i>Retards / rappels — ${late.length} membre(s)</h3>
+        ${late.length===0 ? `<div style="font-size:13.5px;color:#94A3B8;">Tous les membres sont à jour ce mois-ci.</div>` :
+        `<div style="display:flex;flex-wrap:wrap;gap:8px;">${late.map(m=>badge(esc(m.firstName)+' '+esc(m.lastName),'orange')).join('')}</div>`}
+      </div>
+      <div class="card" style="overflow:hidden;">
+        ${sorted.length===0 ? emptyState('fa-wallet','Aucune cotisation enregistrée') :
+        `<div class="table-wrap"><table>
+          <thead><tr><th>Membre</th><th class="hide-sm">Période</th><th class="hide-sm">Mode</th><th>Date</th><th style="text-align:right;">Montant</th><th style="text-align:right;">Reçu</th></tr></thead>
+          <tbody>${sorted.map(d=>{
+            const m = State.data.members.find(x=>x.id===d.memberId);
+            return `<tr>
+              <td style="font-weight:600;">${m?esc(m.firstName)+' '+esc(m.lastName):'—'}</td>
+              <td class="hide-sm" style="color:#64748B;">${esc(d.period)}</td>
+              <td class="hide-sm" style="color:#64748B;">${esc(d.mode)}</td>
+              <td style="color:#64748B;">${fmtDate(d.date)}</td>
+              <td style="text-align:right;font-weight:700;">${fmtMoney(d.amount)}</td>
+              <td style="text-align:right;"><button class="icon-btn" onclick="Dues.printReceipt('${d.id}')"><i class="fa-solid fa-print"></i></button></td>
+            </tr>`;
+          }).join('')}</tbody>
+        </table></div>`}
+      </div>
+    `;
+  }
+};
+
+/* ---------- Accounting ---------- */
+const Accounting = {
+  filter: "tous",
+  setFilter(f){ this.filter = f; renderPage(); },
+  openAdd(type){
+    document.getElementById('tf-type').value = type;
+    document.getElementById('tx-modal-title').textContent = type==='recette' ? "Enregistrer une recette" : "Enregistrer une dépense";
+    document.getElementById('tf-category').value = "";
+    document.getElementById('tf-amount').value = "";
+    document.getElementById('tf-date').value = todayISO();
+    document.getElementById('tf-description').value = "";
+    UI.openModal('modal-tx');
+  },
+  async save(){
+    const category = document.getElementById('tf-category').value.trim();
+    const amount = document.getElementById('tf-amount').value;
+    if (!category || !amount) return;
+    const tx = { id: uid(), type: document.getElementById('tf-type').value, category, amount, date: document.getElementById('tf-date').value, description: document.getElementById('tf-description').value.trim() };
+    try {
+      await Api.addTransaction(tx);
+      UI.closeModal('modal-tx');
+      await refreshData(true);
+    } catch (e) { alert(e.message); }
+  },
+  async remove(id){
+    if (!confirm('Supprimer cette opération ?')) return;
+    try { await Api.deleteTransaction(id); await refreshData(true); } catch (e) { alert(e.message); }
+  },
+  exportCSV(rows){ downloadCSV('livre-de-caisse.csv', [["Date","Type","Catégorie","Description","Montant"], ...rows.map(r=>[fmtDate(r.date), r.type==='recette'?'Recette':'Dépense', r.category, r.description, r.amount])]); },
+  render(){
+    const {transactions, dues, settings} = State.data;
+    const totalIncome = transactions.filter(t=>t.type==='recette').reduce((s,t)=>s+Number(t.amount||0),0) + dues.reduce((s,d)=>s+Number(d.amount||0),0);
+    const totalExpense = transactions.filter(t=>t.type==='depense').reduce((s,t)=>s+Number(t.amount||0),0);
+    const balance = totalIncome - totalExpense;
+    const dueRows = dues.map(d=>{ const m = State.data.members.find(x=>x.id===d.memberId); return {id:d.id, type:'recette', category:'Cotisation', amount:d.amount, date:d.date, description:`Cotisation — ${m?m.firstName+' '+m.lastName:'Membre'}`, isDue:true}; });
+    const rows = [...transactions, ...dueRows].sort((a,b)=>b.date.localeCompare(a.date));
+    const shown = this.filter==='tous' ? rows : rows.filter(r=>r.type===this.filter);
+    window.__accRows = rows;
+    return `
+      <div class="stat-grid" style="grid-template-columns:repeat(auto-fit,minmax(180px,1fr));margin-bottom:18px;">
+        ${statCard('fa-arrow-up','Total recettes',fmtMoney(totalIncome),'var(--green)')}
+        ${statCard('fa-arrow-down','Total dépenses',fmtMoney(totalExpense),'var(--red)')}
+        ${statCard('fa-building-columns','Solde de caisse',fmtMoney(balance),'var(--blue)')}
+      </div>
+      <div style="display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:space-between;margin-bottom:16px;">
+        <div style="display:flex;gap:6px;">
+          ${['tous','recette','depense'].map(f=>`<button class="btn btn-sm" style="${this.filter===f?'background:var(--blue);color:#fff;':'background:#F1F5F9;color:#64748B;'}" onclick="Accounting.setFilter('${f}')">${f==='tous'?'Tous':f==='recette'?'Recettes':'Dépenses'}</button>`).join('')}
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+          <button class="btn btn-outline btn-sm" onclick="Accounting.exportCSV(window.__accRows)"><i class="fa-solid fa-download"></i> Exporter</button>
+          <button class="btn btn-secondary btn-sm" onclick="Accounting.openAdd('recette')"><i class="fa-solid fa-arrow-up"></i> Recette</button>
+          <button class="btn btn-primary btn-sm" onclick="Accounting.openAdd('depense')"><i class="fa-solid fa-arrow-down"></i> Dépense</button>
+        </div>
+      </div>
+      <div class="card" style="overflow:hidden;">
+        ${shown.length===0 ? emptyState('fa-building-columns','Livre de caisse vide','Enregistrez une recette ou une dépense pour commencer.') :
+        `<div class="table-wrap"><table>
+          <thead><tr><th>Description</th><th class="hide-sm">Catégorie</th><th>Date</th><th style="text-align:right;">Montant</th><th></th></tr></thead>
+          <tbody>${shown.map(r=>`<tr>
+            <td style="font-weight:600;">${esc(r.description)}</td>
+            <td class="hide-sm" style="color:#64748B;">${esc(r.category)}</td>
+            <td style="color:#64748B;">${fmtDate(r.date)}</td>
+            <td style="text-align:right;font-weight:700;color:${r.type==='recette'?'#059669':'#E11D48'};">${r.type==='recette'?'+':'−'}${fmtMoney(r.amount)}</td>
+            <td style="text-align:right;">${!r.isDue?`<button class="icon-btn danger" onclick="Accounting.remove('${r.id}')"><i class="fa-solid fa-trash"></i></button>`:''}</td>
+          </tr>`).join('')}</tbody>
+        </table></div>`}
+      </div>
+    `;
+  }
+};
+
+/* ---------- Users ---------- */
+const Users = {
+  openAdd(){
+    document.getElementById('uf-id').value = uid();
+    document.getElementById('uf-name').value = "";
+    document.getElementById('uf-email').value = "";
+    document.getElementById('uf-password').value = "";
+    document.getElementById('uf-password').placeholder = "Mot de passe";
+    document.getElementById('uf-password-label').innerHTML = 'Mot de passe<span class="req"> *</span>';
+    document.getElementById('uf-role').value = "secretaire";
+    UI.openModal('modal-user');
+  },
+  openEdit(id){
+    const u = State.data.users.find(x=>x.id===id); if(!u) return;
+    document.getElementById('uf-id').value = u.id;
+    document.getElementById('uf-name').value = u.name;
+    document.getElementById('uf-email').value = u.email;
+    document.getElementById('uf-password').value = "";
+    document.getElementById('uf-password').placeholder = "Laisser vide pour ne pas changer";
+    document.getElementById('uf-password-label').innerHTML = 'Mot de passe';
+    document.getElementById('uf-role').value = u.role;
+    UI.openModal('modal-user');
+  },
+  async save(){
+    const name = document.getElementById('uf-name').value.trim();
+    const email = document.getElementById('uf-email').value.trim();
+    const pwd = document.getElementById('uf-password').value;
+    const id = document.getElementById('uf-id').value;
+    const isNew = !State.data.users.some(u=>u.id===id);
+    if (!name || !email) return;
+    if (isNew && !pwd) return;
+    const role = document.getElementById('uf-role').value;
+    try {
+      if (isNew) {
+        await Api.addUser({ id, name, email, password: pwd, role });
+      } else {
+        const existing = State.data.users.find(u=>u.id===id);
+        await Api.updateUser(id, { name, email, role, active: existing ? existing.active : true, ...(pwd ? { password: pwd } : {}) });
+      }
+      UI.closeModal('modal-user');
+      await refreshData(true);
+    } catch (e) { alert(e.message); }
+  },
+  async toggleActive(id){
+    const u = State.data.users.find(x=>x.id===id); if (!u) return;
+    try { await Api.updateUser(id, { name: u.name, email: u.email, role: u.role, active: !u.active }); await refreshData(true); }
+    catch (e) { alert(e.message); }
+  },
+  render(){
+    const roleLabel = r => (ROLES.find(x=>x.key===r)||{}).label || r;
+    return `
+      <div style="display:flex;justify-content:flex-end;margin-bottom:16px;"><button class="btn btn-primary" onclick="Users.openAdd()"><i class="fa-solid fa-plus"></i> Ajouter un utilisateur</button></div>
+      <div class="card" style="overflow:hidden;">
+        <div class="table-wrap"><table>
+          <thead><tr><th>Nom</th><th class="hide-sm">E-mail</th><th>Rôle</th><th>Statut</th><th style="text-align:right;">Actions</th></tr></thead>
+          <tbody>${State.data.users.map(u=>`<tr>
+            <td style="font-weight:600;">${esc(u.name)}</td>
+            <td class="hide-sm" style="color:#64748B;">${esc(u.email)}</td>
+            <td>${badge(roleLabel(u.role),'blue')}</td>
+            <td>${badge(u.active?'Actif':'Désactivé', u.active?'green':'red')}</td>
+            <td style="text-align:right;">
+              <button class="icon-btn" onclick="Users.openEdit('${u.id}')"><i class="fa-solid fa-pen"></i></button>
+              <button class="icon-btn" onclick="Users.toggleActive('${u.id}')"><i class="fa-solid fa-shield-halved"></i></button>
+            </td>
+          </tr>`).join('')}</tbody>
+        </table></div>
+      </div>
+    `;
+  }
+};
+
+/* ---------- Validation ---------- */
+const Validation = {
+  async decide(id, status){
+    const obs = document.getElementById('obs-'+id);
+    const val = obs ? obs.value : "";
+    try { await Api.decideReport(id, status, val); await refreshData(true); } catch (e) { alert(e.message); }
+  },
+  render(){
+    const pending = State.data.reports.filter(r=>r.status==='en_attente');
+    const decided = State.data.reports.filter(r=>r.status!=='en_attente');
+    const statusTone = {valide:'green', rejete:'red'}; const statusLabel = {valide:'Validé', rejete:'Rejeté'};
+    return `
+      <h3 class="section-title">En attente de validation (${pending.length})</h3>
+      ${pending.length===0 ? `<div class="card">${emptyState('fa-clipboard-check','Rien à valider','Les rapports envoyés par le secrétaire ou le trésorier apparaîtront ici.')}</div>` :
+      `<div style="display:flex;flex-direction:column;gap:12px;margin-bottom:26px;">
+        ${pending.map(r=>`<div class="card pad">
+          <div style="display:flex;justify-content:space-between;gap:10px;margin-bottom:8px;">
+            <div><div style="font-weight:800;">${esc(r.title)}</div><div style="font-size:11.5px;color:#94A3B8;">${r.type==='secretaire'?'Secrétariat':'Trésorerie'} · ${esc(r.author)} · ${fmtDate(r.date)}</div></div>
+            ${badge('En attente','orange')}
+          </div>
+          <p style="font-size:13.5px;color:#475569;white-space:pre-wrap;margin:0 0 12px;">${esc(r.content)}</p>
+          <textarea class="input" id="obs-${r.id}" rows="2" placeholder="Observations (optionnel)" style="margin-bottom:12px;"></textarea>
+          <div style="display:flex;gap:8px;">
+            <button class="btn btn-primary btn-sm" onclick="Validation.decide('${r.id}','valide')"><i class="fa-solid fa-check"></i> Approuver</button>
+            <button class="btn btn-danger btn-sm" onclick="Validation.decide('${r.id}','rejete')"><i class="fa-solid fa-circle-xmark"></i> Rejeter</button>
+          </div>
+        </div>`).join('')}
+      </div>`}
+      <h3 class="section-title">Historique</h3>
+      ${decided.length===0 ? `<div style="font-size:13.5px;color:#94A3B8;">Aucun rapport traité pour le moment.</div>` :
+      `<div style="display:flex;flex-direction:column;gap:8px;">
+        ${decided.map(r=>`<div class="card pad" style="display:flex;align-items:center;justify-content:space-between;gap:10px;">
+          <div style="min-width:0;"><div style="font-weight:700;font-size:13.5px;">${esc(r.title)}</div><div style="font-size:11.5px;color:#94A3B8;">${esc(r.author)} · ${fmtDate(r.date)}${r.observations?` — ${esc(r.observations)}`:''}</div></div>
+          ${badge(statusLabel[r.status], statusTone[r.status])}
+        </div>`).join('')}
+      </div>`}
+    `;
+  }
+};
+
+/* ---------- Reports ---------- */
+const Reports = {
+  async send(){
+    const title = document.getElementById('rf-title').value.trim();
+    const content = document.getElementById('rf-content').value.trim();
+    if (!title || !content) return;
+    const roleLabel = (ROLES.find(r=>r.key===State.role)||{}).label;
+    try {
+      await Api.addReport({ id: uid(), type: State.role, kind:'financial', title, content, author: roleLabel, date: todayISO(), status:'en_attente', observations:'' });
+      UI.closeModal('modal-report');
+      await refreshData(true);
+    } catch (e) { alert(e.message); }
+  },
+  printReport(id){
+    const r = State.data.reports.find(x=>x.id===id); if(!r) return;
+    const s = State.data.settings;
+    State.printView = `
+      <div class="print-screen">
+        <style>@media print{.no-print{display:none!important;}}</style>
+        <div class="no-print" style="display:flex;gap:10px;margin-bottom:24px;">
+          <button class="btn btn-secondary" onclick="PrintView.close()"><i class="fa-solid fa-arrow-left"></i> Retour</button>
+          <button class="btn btn-primary" onclick="window.print()"><i class="fa-solid fa-print"></i> Imprimer / PDF</button>
+        </div>
+        <div style="width:600px;max-width:100%;background:#fff;border-radius:14px;box-shadow:0 15px 40px rgba(0,0,0,.15);padding:32px;">
+          <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px;padding-bottom:16px;border-bottom:2px solid var(--blue);">
+            ${logoImgOrFallback(50)}
+            <div>
+              <div style="font-weight:800;font-size:17px;color:var(--blue);">${esc(s.name)}</div>
+              <div style="font-size:11.5px;color:#94A3B8;">${esc(s.address)} ${s.phone?'· '+esc(s.phone):''} ${s.email?'· '+esc(s.email):''}</div>
+            </div>
+          </div>
+          <h2 style="margin:0 0 4px;color:#1E293B;">${esc(r.title)}</h2>
+          <div style="font-size:12px;color:#94A3B8;margin-bottom:18px;">${r.type==='secretaire'?'Secrétariat':'Trésorerie'} · ${esc(r.author)} · ${fmtDate(r.date)}</div>
+          <p style="font-size:14px;color:#334155;white-space:pre-wrap;line-height:1.7;">${esc(r.content)}</p>
+          ${r.observations?`<div style="margin-top:18px;padding:12px 14px;background:#F8FAFC;border-radius:10px;font-size:13px;color:#475569;"><b>Observations :</b> ${esc(r.observations)}</div>`:''}
+        </div>
+      </div>
+    `;
+    renderPrint();
+  },
+  exportMembers(){ downloadCSV('membres.csv', [["N°","Nom","Catégorie","Statut","Adhésion"], ...State.data.members.map(m=>[m.memberNumber, m.firstName+' '+m.lastName, m.category, m.status, fmtDate(m.joinDate)])]); },
+  render(){
+    const myReports = State.data.reports.filter(r=>r.type===State.role && r.kind!=='meeting');
+    const statusTone = {en_attente:'orange', valide:'green', rejete:'red'};
+    const statusLabel = {en_attente:'En attente', valide:'Validé', rejete:'Rejeté'};
+    let top = '';
+    if (State.role === 'administrateur'){
+      const s = State.data.settings;
+      top = `<div class="card pad" style="margin-bottom:20px;">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;">
+          ${logoImgOrFallback(38)}
+          <div><div style="font-weight:800;">${esc(s.name)}</div><div style="font-size:11px;color:#94A3B8;">${esc(s.address)||"Renseignez l'adresse dans Paramètres"}</div></div>
+        </div>
+        <div class="stat-grid" style="margin-bottom:16px;">
+          ${statCard('fa-users','Membres',State.data.members.length,'var(--blue)')}
+          ${statCard('fa-wallet','Cotisations totales',fmtMoney(State.data.dues.reduce((s2,d)=>s2+Number(d.amount||0),0)),'var(--orange)')}
+          ${statCard('fa-clipboard-check','Rapports reçus',State.data.reports.length,'var(--green)')}
+          ${statCard('fa-calendar-days','Comptes rendus',State.data.reports.filter(r=>r.kind==='meeting').length,'var(--blue-dark)')}
+        </div>
+        <button class="btn btn-outline btn-sm" onclick="Reports.exportMembers()"><i class="fa-solid fa-download"></i> Exporter le rapport des membres (CSV)</button>
+      </div>`;
+    } else {
+      top = `<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+        <h3 class="section-title" style="margin:0;">Mes rapports envoyés</h3>
+        <button class="btn btn-primary" onclick="Reports.openSend()"><i class="fa-solid fa-plus"></i> Envoyer un rapport</button>
+      </div>`;
+    }
+    const list = State.role === 'administrateur' ? State.data.reports.filter(r=>r.kind!=='meeting') : myReports;
+    return `
+      ${top}
+      <div style="display:flex;flex-direction:column;gap:10px;">
+        ${list.length===0 ? `<div class="card">${emptyState('fa-chart-column','Aucun rapport')}</div>` :
+        list.map(r=>`<div class="card pad">
+          <div style="display:flex;justify-content:space-between;gap:10px;">
+            <div style="min-width:0;">
+              <div style="font-weight:700;font-size:13.5px;">${esc(r.title)}</div>
+              <div style="font-size:11.5px;color:#94A3B8;margin-bottom:4px;">${esc(r.author)} · ${fmtDate(r.date)}</div>
+              <p style="font-size:13.5px;color:#475569;white-space:pre-wrap;margin:0;">${esc(r.content)}</p>
+              ${r.observations?`<div style="font-size:12px;color:#94A3B8;margin-top:4px;font-style:italic;">Observation : ${esc(r.observations)}</div>`:''}
+            </div>
+            <div style="display:flex;flex-direction:column;align-items:flex-end;gap:8px;flex-shrink:0;">
+              ${badge(statusLabel[r.status], statusTone[r.status])}
+              <button class="icon-btn" onclick="Reports.printReport('${r.id}')"><i class="fa-solid fa-print"></i></button>
+            </div>
+          </div>
+        </div>`).join('')}
+      </div>
+    `;
+  },
+  openSend(){
+    document.getElementById('rf-title').value = "";
+    document.getElementById('rf-content').value = "";
+    UI.openModal('modal-report');
+  }
+};
+
+/* ---------- Meetings ---------- */
+const Meetings = {
+  async send(){
+    const title = document.getElementById('mtf-title').value.trim();
+    const content = document.getElementById('mtf-content').value.trim();
+    if (!title || !content) return;
+    const participants = document.getElementById('mtf-participants').value.trim();
+    try {
+      await Api.addReport({ id: uid(), type:'secretaire', kind:'meeting', title, content, participants, author:'Secrétariat', date: todayISO(), status:'en_attente', observations:'' });
+      UI.closeModal('modal-meeting');
+      await refreshData(true);
+    } catch (e) { alert(e.message); }
+  },
+  openAdd(){
+    document.getElementById('mtf-title').value = "";
+    document.getElementById('mtf-participants').value = "";
+    document.getElementById('mtf-content').value = "";
+    UI.openModal('modal-meeting');
+  },
+  render(){
+    const meetings = State.data.reports.filter(r=>r.kind==='meeting');
+    const statusTone = {en_attente:'orange', valide:'green', rejete:'red'};
+    const statusLabel = {en_attente:'En attente', valide:'Validé', rejete:'Rejeté'};
+    return `
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+        <div style="font-size:13.5px;color:#64748B;">${meetings.length} compte(s) rendu(s)</div>
+        <button class="btn btn-primary" onclick="Meetings.openAdd()"><i class="fa-solid fa-plus"></i> Créer un compte rendu</button>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:10px;">
+        ${meetings.length===0 ? `<div class="card">${emptyState('fa-calendar-days','Aucun compte rendu','Rédigez le procès-verbal de votre prochaine réunion.')}</div>` :
+        meetings.map(r=>`<div class="card pad">
+          <div style="display:flex;justify-content:space-between;gap:10px;">
+            <div style="min-width:0;">
+              <div style="font-weight:700;font-size:13.5px;">${esc(r.title)}</div>
+              <div style="font-size:11.5px;color:#94A3B8;margin-bottom:4px;">${fmtDate(r.date)}${r.participants?` · Participants : ${esc(r.participants)}`:''}</div>
+              <p style="font-size:13.5px;color:#475569;white-space:pre-wrap;margin:0;">${esc(r.content)}</p>
+            </div>
+            ${badge(statusLabel[r.status], statusTone[r.status])}
+          </div>
+        </div>`).join('')}
+      </div>
+    `;
+  }
+};
+
+/* ---------- Settings ---------- */
+const Settings = {
+  _tempLogo: null,
+  async loadLicenseStatus(){
+    const box = document.getElementById('license-status-box');
+    if (!box) return;
+    try {
+      const res = await Api.licenseStatus();
+      box.innerHTML = res.active
+        ? `${badge('Active','green')} <span style="margin-left:8px;color:#64748B;">jusqu'au ${fmtDate(res.expires)}</span>`
+        : `${badge(res.expires?'Expirée':'Non activée','red')} ${res.expires?`<span style="margin-left:8px;color:#64748B;">depuis le ${fmtDate(res.expires)}</span>`:''}`;
+    } catch(e) { box.innerHTML = `<span style="color:#94A3B8;">Statut indisponible</span>`; }
+  },
+  async renewLicense(){
+    const key = document.getElementById('sf-license-key').value.trim();
+    const err = document.getElementById('sf-license-error');
+    err.style.display = 'none';
+    if (!key) return;
+    try {
+      await Api.activateLicense(key);
+      document.getElementById('sf-license-key').value = '';
+      Settings.loadLicenseStatus();
+    } catch(e) { err.textContent = e.message; err.style.display = 'block'; }
+  },
+  openLogoPicker(e){
+    const file = e.target.files[0]; if(!file) return;
+    const reader = new FileReader();
+    reader.onload = () => { Settings._tempLogo = reader.result; document.getElementById('sf-logo-preview').src = reader.result; };
+    reader.readAsDataURL(file);
+  },
+  resetLogo(){ Settings._tempLogo = DEFAULT_LOGO; document.getElementById('sf-logo-preview').src = DEFAULT_LOGO; },
+  async save(){
+    const s = {
+      name: document.getElementById('sf-name').value.trim() || "EasyCommunity",
+      shortName: document.getElementById('sf-shortname').value.trim(),
+      slogan: document.getElementById('sf-slogan').value.trim(),
+      address: document.getElementById('sf-address').value.trim(),
+      phone: document.getElementById('sf-phone').value.trim(),
+      email: document.getElementById('sf-email').value.trim(),
+      website: document.getElementById('sf-website').value.trim(),
+      regNumber: document.getElementById('sf-regnumber').value.trim(),
+      president: document.getElementById('sf-president').value.trim(),
+      currency: document.getElementById('sf-currency').value.trim() || "FCFA",
+      createdDate: document.getElementById('sf-createddate').value,
+      logo: Settings._tempLogo !== null ? Settings._tempLogo : State.data.settings.logo,
+    };
+    try {
+      await Api.saveSettings(s);
+      await refreshData(true);
+      const ok = document.getElementById('settings-saved-flag');
+      if (ok){ ok.style.display='inline-flex'; setTimeout(()=>ok.style.display='none', 2200); }
+    } catch (e) { alert(e.message); }
+  },
+  render(){
+    const s = State.data.settings; this._tempLogo = null;
+    return `
+      <div style="max-width:640px;">
+        <div class="card pad">
+          <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px;">
+            <img id="sf-logo-preview" src="${s.logo||DEFAULT_LOGO}" style="width:54px;height:54px;border-radius:14px;object-fit:contain;border:1px solid var(--line);background:#fff;">
+            <div>
+              <div style="font-weight:800;">Informations de l'association</div>
+              <div style="font-size:12px;color:#94A3B8;">Le logo et ces informations apparaissent sur les cartes, reçus et rapports.</div>
+            </div>
+          </div>
+          <div style="display:flex;gap:10px;margin-bottom:20px;">
+            <label class="file-btn"><i class="fa-solid fa-upload"></i> Changer le logo<input type="file" accept="image/*" style="display:none" onchange="Settings.openLogoPicker(event)"></label>
+            <button class="file-btn" onclick="Settings.resetLogo()"><i class="fa-solid fa-rotate-left"></i> Logo par défaut</button>
+          </div>
+          <div class="grid2">
+            <label class="field"><span class="field-label">Nom de l'association</span><input class="input" id="sf-name" value="${esc(s.name)}"></label>
+            <label class="field"><span class="field-label">Sigle</span><input class="input" id="sf-shortname" value="${esc(s.shortName)}"></label>
+            <label class="field span2"><span class="field-label">Slogan</span><input class="input" id="sf-slogan" value="${esc(s.slogan)}"></label>
+            <label class="field span2"><span class="field-label">Adresse</span><input class="input" id="sf-address" value="${esc(s.address)}"></label>
+            <label class="field"><span class="field-label">Téléphone</span><input class="input" id="sf-phone" value="${esc(s.phone)}"></label>
+            <label class="field"><span class="field-label">E-mail</span><input class="input" type="email" id="sf-email" value="${esc(s.email)}"></label>
+            <label class="field"><span class="field-label">Site web</span><input class="input" id="sf-website" value="${esc(s.website)}"></label>
+            <label class="field"><span class="field-label">N° d'enregistrement / Récépissé</span><input class="input" id="sf-regnumber" value="${esc(s.regNumber)}"></label>
+            <label class="field"><span class="field-label">Président(e)</span><input class="input" id="sf-president" value="${esc(s.president)}"></label>
+            <label class="field"><span class="field-label">Devise</span><input class="input" id="sf-currency" value="${esc(s.currency)}"></label>
+            <label class="field"><span class="field-label">Date de création</span><input class="input" type="date" id="sf-createddate" value="${esc(s.createdDate)}"></label>
+          </div>
+          <div style="display:flex;align-items:center;gap:12px;margin-top:20px;">
+            <button class="btn btn-primary" onclick="Settings.save()">Enregistrer les paramètres</button>
+            <span id="settings-saved-flag" style="display:none;align-items:center;gap:5px;color:#059669;font-weight:700;font-size:13px;"><i class="fa-solid fa-check"></i> Enregistré</span>
+          </div>
+          <div style="font-size:11.5px;color:#A6B0C0;margin-top:14px;">Le numéro d'adhésion des nouveaux membres est généré à partir du sigle du nom de l'association, de l'année et du rang d'adhésion (ex. ${esc(getInitials(s.name))}-${new Date().getFullYear()}-0001).</div>
+        </div>
+
+        <div class="card pad" style="margin-top:16px;">
+          <div style="display:flex;align-items:center;gap:12px;margin-bottom:14px;">
+            <div class="stat-icon" style="background:#FFF6E9;color:var(--orange);"><i class="fa-solid fa-key"></i></div>
+            <div>
+              <div style="font-weight:800;">Licence de l'application</div>
+              <div style="font-size:12px;color:#94A3B8;">Tant que la licence est active, tous les comptes (secrétaire, trésorier) peuvent travailler.</div>
+            </div>
+          </div>
+          <div style="font-size:13.5px;font-weight:600;margin-bottom:16px;" id="license-status-box">Chargement du statut...</div>
+          <div class="login-error" id="sf-license-error"></div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;">
+            <input class="input" id="sf-license-key" placeholder="Nouvelle clé de licence" style="flex:1;min-width:200px;">
+            <button class="btn btn-outline" onclick="Settings.renewLicense()">Activer / renouveler</button>
+          </div>
+        </div>
+      </div>
+    `;
+  }
+};
+
+/* ---------- Print view controller ---------- */
+const PrintView = { close(){ State.printView = null; render(); } };
+function renderPrint(){
+  document.getElementById('shell').style.display = 'none';
+  const pr = document.getElementById('print-root');
+  pr.style.display = 'block';
+  pr.innerHTML = State.printView;
+}
+
+/* ---------- Master render ---------- */
+function renderPage(){
+  const map = {
+    dashboard: pageDashboard,
+    members: () => Members.render(),
+    cards: () => Cards.render(),
+    dues: () => Dues.render(),
+    accounting: () => Accounting.render(),
+    users: () => Users.render(),
+    validation: () => Validation.render(),
+    reports: () => Reports.render(),
+    meetings: () => Meetings.render(),
+    settings: () => Settings.render(),
+  };
+  document.getElementById('page').innerHTML = (map[State.page] || pageDashboard)();
+  renderTopbar();
+  if (State.page === 'settings') Settings.loadLicenseStatus();
+}
+function render(){
+  if (!Auth.session){
+    document.getElementById('shell').style.display = 'none';
+    document.getElementById('print-root').style.display = 'none';
+    document.getElementById('license-screen').style.display = 'none';
+    document.getElementById('login-screen').style.display = 'flex';
+    document.getElementById('login-logo').src = State.data.settings.logo || DEFAULT_LOGO;
+    document.getElementById('login-assoc-name').textContent = State.data.settings.name || "EasyCommunity";
+    return;
+  }
+  document.getElementById('login-screen').style.display = 'none';
+  if (State.license.active === false){
+    document.getElementById('shell').style.display = 'none';
+    document.getElementById('print-root').style.display = 'none';
+    document.getElementById('license-screen').style.display = 'flex';
+    renderLicenseScreen();
+    return;
+  }
+  document.getElementById('license-screen').style.display = 'none';
+  if (State.printView){ renderPrint(); return; }
+  document.getElementById('shell').style.display = 'flex';
+  document.getElementById('print-root').style.display = 'none';
+  document.getElementById('sidebar').innerHTML = renderSidebar();
+  renderPage();
+}
+
+/* ---------- PWA: service worker + install prompt ---------- */
+let deferredInstallPrompt = null;
+window.addEventListener('beforeinstallprompt', (e) => {
+  e.preventDefault();
+  deferredInstallPrompt = e;
+  const btn = document.getElementById('install-btn');
+  if (btn) btn.style.display = 'inline-flex';
+});
+const PwaInstall = {
+  async trigger(){
+    if (!deferredInstallPrompt) return;
+    deferredInstallPrompt.prompt();
+    await deferredInstallPrompt.userChoice;
+    deferredInstallPrompt = null;
+    const btn = document.getElementById('install-btn');
+    if (btn) btn.style.display = 'none';
+  }
+};
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => { navigator.serviceWorker.register('/sw.js').catch(()=>{}); });
+}
+
+/* ---------- Init ---------- */
+(async function init(){
+  Auth.loadSession();
+  if (Auth.session) {
+    State.role = Auth.session.role;
+    try {
+      await refreshData(true);
+      startPolling();
+    } catch (e) {
+      Auth.logout();
+    }
+  } else {
+    render();
+  }
+})();
+</script>
+</body>
+</html>
