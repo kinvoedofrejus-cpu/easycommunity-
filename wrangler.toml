@@ -1,0 +1,17 @@
+name = "easycommunity"
+main = "worker.js"
+compatibility_date = "2024-11-01"
+
+# Sert le site statique (public/index.html) sur toutes les routes
+# qui ne commencent pas par /api/ — voir worker.js
+[assets]
+directory = "./public"
+binding = "ASSETS"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "easycommunity"
+database_id = "REMPLACER_PAR_L_ID_RETOURNE_PAR_WRANGLER_D1_CREATE"
+
+# Aucun secret à définir avec "wrangler secret put" : TOKEN_SECRET,
+# PASSWORD_PEPPER et LICENSE_SECRET sont codés en dur dans worker.js.
