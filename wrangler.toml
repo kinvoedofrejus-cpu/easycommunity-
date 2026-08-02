@@ -11,7 +11,7 @@ binding = "ASSETS"
 [[d1_databases]]
 binding = "DB"
 database_name = "easycommunity"
-database_id = "REMPLACER_PAR_L_ID_RETOURNE_PAR_WRANGLER_D1_CREATE"
+database_id = "b9ef9c82-aa63-45e2-8ec7-30eff57cc3da"
 
 # Aucun secret à définir avec "wrangler secret put" : TOKEN_SECRET,
 # PASSWORD_PEPPER et LICENSE_SECRET sont codés en dur dans worker.js.
